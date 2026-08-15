@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>公開授課行事曆與教務彙整系統 | 114學年度</title>
+  <meta name="description" content="提供教師線上填寫公開授課時間、內容，教務處審核彙整與一鍵公告發布，符合教育局規定格式之公開授課管理網站。">
+  <!-- Google Fonts: 溫暖手繪與圓體字型 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Zen+Maru+Gothic:wght@400;500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mode-frontend">
+  
+  <!-- ==========================================================================
+       前台 HEADER (一般教師、觀課教師、外校訪客專用 - 手繪風)
+       ========================================================================== -->
+  <header class="app-header frontend-header" id="frontendHeader">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="brand-icon sketch-badge">
+          <i class="fa-solid fa-paintbrush"></i>
+        </div>
+        <div class="brand-text">
+          <h1 id="displaySiteTitle">公開授課行事曆</h1>
+          <p class="brand-subtitle" id="displaySiteSubtitle">114 學年度教師公開授課與觀課報名網</p>
+        </div>
+      </div>
+
+      <!-- 前台功能按鈕 -->
+      <div class="header-actions">
+        <button class="btn btn-sketch-secondary" id="frontendProcessBtn">
+          <i class="fa-solid fa-book-open-reader"></i> 辦理流程指引
+        </button>
+        <button class="btn btn-sketch-primary" id="frontendRegisterBtn">
+          <i class="fa-solid fa-feather-pointed"></i> 教師線上登記公開課
+        </button>
+        <button class="btn btn-sketch-outline admin-login-btn" id="switchToBackendBtn">
+          <i class="fa-solid fa-user-shield"></i> 教務處管理後台
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       後台 HEADER (教務處管理者專用 - 手繪深色主視覺)
+       ========================================================================== -->
+  <header class="app-header backend-header hidden" id="backendHeader">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="brand-icon admin-icon sketch-badge">
+          <i class="fa-solid fa-building-columns"></i>
+        </div>
+        <div class="brand-text">
+          <h1 id="displayAdminSiteTitle">教務處 - 公開授課管理後台</h1>
+          <p class="brand-subtitle">全校公開授課審核、彙整與教育局報表管理</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-sketch-success" id="backendNewBtn">
+          <i class="fa-solid fa-plus"></i> 新增/代填公開課
+        </button>
+        <button class="btn btn-sketch-outline text-white" id="exportBureauFormatBtn">
+          <i class="fa-solid fa-file-export"></i> 匯出教育局報表
+        </button>
+        <button class="btn btn-sketch-danger" id="switchToFrontendBtn">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> 離開後台 (返回前台)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 前台公告 Banner -->
+  <section class="banner-notice sketch-card" id="bannerNotice">
+    <div class="notice-container">
+      <div class="notice-icon"><i class="fa-solid fa-bullhorn"></i></div>
+      <div class="notice-content">
+        <strong>觀課溫馨提醒：</strong> 歡迎同校及各校教師登記參與公開授課。授課完畢請於 2 星期內繳交教學觀察紀錄表。
+      </div>
+      <button class="notice-close" onclick="this.parentElement.parentElement.style.display='none'">&times;</button>
+    </div>
+  </section>
+
+  <!-- 主要內容區域 -->
+  <main class="main-wrapper">
+    
+    <!-- ==========================================================================
+         前台頁面 (一般教師 & 訪客：手繪明細列表與觀課報名)
+         ========================================================================== -->
+    <section id="frontendPortal" class="portal-section">
+      
+      <!-- 前台卡片頂部：標題與多維度篩選條 -->
+      <div class="controls-card sketch-card">
+        <div class="portal-title-line">
+          <h2><i class="fa-solid fa-pencil"></i> 公開授課明細與觀課報名</h2>
+          <span class="result-count sketch-tag" id="frontendResultCount">共 0 場次已公告公開授課</span>
+        </div>
+
+        <div class="filter-toolbar" style="margin-top: 1rem;">
+          <div class="filter-group">
+            <div class="input-with-icon">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="frontendSearchInput" placeholder="搜尋教師姓名、單元主題、班級..." class="form-control sketch-input">
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <select id="frontendSubjectFilter" class="form-select sketch-input">
+              <option value="all">所有科目(領域)</option>
+              <option value="國語">國語</option>
+              <option value="數學">數學</option>
+              <option value="自然">自然</option>
+              <option value="社會">社會</option>
+              <option value="英語">英語</option>
+              <option value="藝文">藝文</option>
+              <option value="健體">健體</option>
+              <option value="綜合">綜合</option>
+              <option value="科技">科技</option>
+            </select>
+
+            <select id="frontendOpenTypeFilter" class="form-select sketch-input">
+              <option value="all">所有開放型態</option>
+              <option value="校內">校內公開課</option>
+              <option value="區級">區級公開課</option>
+              <option value="市級">市級公開課</option>
+              <option value="全國">全國公開課</option>
+            </select>
+
+            <button class="btn btn-icon sketch-btn-icon" id="frontendResetBtn" title="重置篩選">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 前台「授課明細列表」主力展示區 -->
+      <div class="table-responsive-wrapper sketch-card">
+        <table class="bureau-table sketch-table" id="frontendTable">
+          <thead>
+            <tr>
+              <th>場次</th>
+              <th>公開授課日期與節次</th>
+              <th>班級</th>
+              <th>授課教師</th>
+              <th>科目(領域)</th>
+              <th>授課單元</th>
+              <th>地點</th>
+              <th>開放型態</th>
+              <th>觀課席次</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="frontendTableBody">
+            <!-- JS 渲染已公告之公開授課資料 -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 下方參考流程卡片區 -->
+      <div class="frontend-process-section" style="margin-top: 2rem;">
+        <div class="process-card sketch-card">
+          <div class="process-card-header">
+            <h3><i class="fa-solid fa-file-shield"></i> 辦理公開授課注意事項與 7 大參考流程</h3>
+            <a href="pdf-assets/1589913_1）辦理公開授課參考流程_V1.pdf" target="_blank" class="btn btn-sm btn-sketch-outline">
+              <i class="fa-solid fa-file-pdf"></i> 下載流程 PDF 原檔
+            </a>
+          </div>
+          <div class="timeline-container" id="frontendTimeline">
+            <!-- JS 動態渲染 7 大流程 -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         後台頁面 (教務處管理者專用：月曆/週曆、審核、統計與系統密碼標題設定)
+         ========================================================================== -->
+    <section id="backendPortal" class="portal-section hidden">
+      
+      <!-- 後台功能分頁 Tab -->
+      <div class="controls-card sketch-card">
+        <div class="view-tabs">
+          <button class="tab-btn active" data-adminview="dashboard"><i class="fa-solid fa-chart-pie"></i> 審核與統計儀表板 <span class="badge-count" id="pendingReviewCount">0</span></button>
+          <button class="tab-btn" data-adminview="month"><i class="fa-solid fa-calendar-days"></i> 全校月曆視圖</button>
+          <button class="tab-btn" data-adminview="week"><i class="fa-solid fa-calendar-week"></i> 週曆排程網格</button>
+          <button class="tab-btn" data-adminview="master"><i class="fa-solid fa-database"></i> 全校授課資料維護</button>
+          <button class="tab-btn" data-adminview="settings"><i class="fa-solid fa-gear"></i> 標題與後台密碼修改</button>
+        </div>
+      </div>
+
+      <!-- 後台子視圖 1: 審核與統計儀表板 -->
+      <div id="adminSubDashboard" class="admin-subview">
+        <div class="admin-dashboard-grid">
+          <div class="metric-card sketch-card">
+            <div class="metric-icon icon-blue"><i class="fa-solid fa-calendar-check"></i></div>
+            <div class="metric-info">
+              <span class="metric-label">已公告公開授課</span>
+              <span class="metric-value" id="statPublishedCount">0</span>
+            </div>
+          </div>
+          <div class="metric-card sketch-card">
+            <div class="metric-icon icon-amber"><i class="fa-solid fa-hourglass-half"></i></div>
+            <div class="metric-info">
+              <span class="metric-label">待教務處審核</span>
+              <span class="metric-value" id="statPendingCount">0</span>
+            </div>
+          </div>
+          <div class="metric-card sketch-card">
+            <div class="metric-icon icon-emerald"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="metric-info">
+              <span class="metric-label">已核准待發布</span>
+              <span class="metric-value" id="statApprovedCount">0</span>
+            </div>
+          </div>
+          <div class="metric-card sketch-card">
+            <div class="metric-icon icon-purple"><i class="fa-solid fa-users"></i></div>
+            <div class="metric-info">
+              <span class="metric-label">總觀課登記人次</span>
+              <span class="metric-value" id="statRegistrationTotal">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-card sketch-card">
+          <div class="admin-card-header">
+            <h3><i class="fa-solid fa-list-check"></i> 待審核公開授課登記案件</h3>
+            <div class="admin-batch-actions">
+              <button class="btn btn-sm btn-sketch-success" id="batchApproveBtn">
+                <i class="fa-solid fa-check-double"></i> 批次核准
+              </button>
+              <button class="btn btn-sm btn-sketch-primary" id="batchPublishBtn">
+                <i class="fa-solid fa-paper-plane"></i> 批次發布公告
+              </button>
+            </div>
+          </div>
+          <div class="table-responsive-wrapper">
+            <table class="bureau-table admin-table sketch-table">
+              <thead>
+                <tr>
+                  <th width="40"><input type="checkbox" id="selectAllPendingCheck"></th>
+                  <th>時間與節次</th>
+                  <th>班級</th>
+                  <th>授課教師</th>
+                  <th>領域與單元</th>
+                  <th>開放型態</th>
+                  <th>申請日期</th>
+                  <th>當前狀態</th>
+                  <th>審核處置</th>
+                </tr>
+              </thead>
+              <tbody id="adminPendingTableBody">
+                <!-- JS 渲染審核列 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 後台子視圖 2: 月曆 View -->
+      <div id="adminSubMonth" class="admin-subview hidden">
+        <div class="calendar-header-bar sketch-card">
+          <div class="month-nav">
+            <button class="btn btn-icon sketch-btn-icon" id="prevMonthBtn"><i class="fa-solid fa-chevron-left"></i></button>
+            <h2 id="calendarMonthTitle" class="month-title">2025 年 10 月</h2>
+            <button class="btn btn-icon sketch-btn-icon" id="nextMonthBtn"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="btn btn-sm btn-sketch-outline" id="todayBtn">回到本月</button>
+          </div>
+          <div class="calendar-legend">
+            <span class="legend-item"><span class="dot dot-school"></span> 校內公開課</span>
+            <span class="legend-item"><span class="dot dot-district"></span> 區級公開課</span>
+            <span class="legend-item"><span class="dot dot-city"></span> 市級公開課</span>
+            <span class="legend-item"><span class="dot dot-national"></span> 全國公開課</span>
+          </div>
+        </div>
+        <div class="calendar-grid-container sketch-card">
+          <div class="calendar-weekdays">
+            <div>週日</div><div>週一</div><div>週二</div><div>週三</div><div>週四</div><div>週五</div><div>週六</div>
+          </div>
+          <div class="calendar-days-grid" id="calendarDaysGrid">
+            <!-- JS 動態繪製月曆格子 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 後台子視圖 3: 週曆 View -->
+      <div id="adminSubWeek" class="admin-subview hidden">
+        <div class="calendar-header-bar sketch-card">
+          <div class="month-nav">
+            <h2 class="month-title">全校週曆排程總覽</h2>
+          </div>
+        </div>
+        <div class="week-grid-container sketch-card" id="weekGridContainer">
+          <!-- JS 動態繪製週曆網格 -->
+        </div>
+      </div>
+
+      <!-- 後台子視圖 4: 全校主資料管理 (教育局11欄位) -->
+      <div id="adminSubMaster" class="admin-subview hidden">
+        <div class="admin-card sketch-card">
+          <div class="admin-card-header">
+            <h3><i class="fa-solid fa-database"></i> 教務處公開授課全校資料庫維護</h3>
+          </div>
+          <div class="table-responsive-wrapper">
+            <table class="bureau-table sketch-table">
+              <thead>
+                <tr>
+                  <th>場次</th>
+                  <th>時間節次</th>
+                  <th>班級</th>
+                  <th>授課教師</th>
+                  <th>科目(領域)</th>
+                  <th>授課單元</th>
+                  <th>備課主持人</th>
+                  <th>共同備課類群</th>
+                  <th>議課主持人</th>
+                  <th>觀課議課類群</th>
+                  <th>開放型態</th>
+                  <th>狀態</th>
+                  <th>維護操作</th>
+                </tr>
+              </thead>
+              <tbody id="adminMasterTableBody">
+                <!-- JS 渲染全校維護列表 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 後台子視圖 5: 標題與密碼修改設定專區 (依使用者要求新增) -->
+      <div id="adminSubSettings" class="admin-subview hidden">
+        <div class="admin-card sketch-card" style="max-width: 800px; margin: 0 auto;">
+          <div class="admin-card-header">
+            <h3><i class="fa-solid fa-sliders"></i> 系統標題與後台登入密碼修改設定</h3>
+          </div>
+          
+          <form id="systemSettingsForm" style="padding: 1rem 0;">
+            
+            <!-- 區塊 1: 修改網站標題與校名 -->
+            <div class="settings-box sketch-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+              <h4 style="color: var(--primary); margin-bottom: 1rem;"><i class="fa-solid fa-heading"></i> 1. 網站與學校標題修改</h4>
+              
+              <div class="form-group">
+                <label for="settingSiteTitle">網站主標題 (顯示於網站頂部與瀏覽器頁籤)</label>
+                <input type="text" id="settingSiteTitle" class="form-control sketch-input" placeholder="例如：新北市 OO 國民小學 114 學年度公開授課行事曆" required>
+              </div>
+
+              <div class="form-group">
+                <label for="settingSiteSubtitle">網站副標題</label>
+                <input type="text" id="settingSiteSubtitle" class="form-control sketch-input" placeholder="例如：114 學年度教師公開授課與觀課報名網">
+              </div>
+            </div>
+
+            <!-- 區塊 2: 修改後台登入密碼 -->
+            <div class="settings-box sketch-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+              <h4 style="color: #b45309; margin-bottom: 1rem;"><i class="fa-solid fa-key"></i> 2. 教務處管理後台密碼修改</h4>
+              
+              <div class="form-group">
+                <label for="settingCurrentPassword">當前舊密碼 <span class="required-star">*</span></label>
+                <input type="password" id="settingCurrentPassword" class="form-control sketch-input" placeholder="請輸入目前的後台密碼 (預設為 admin)">
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="settingNewPassword">設定新密碼 <span class="required-star">*</span></label>
+                  <input type="password" id="settingNewPassword" class="form-control sketch-input" placeholder="請輸入欲設定的新密碼">
+                </div>
+
+                <div class="form-group">
+                  <label for="settingConfirmPassword">再次確認新密碼 <span class="required-star">*</span></label>
+                  <input type="password" id="settingConfirmPassword" class="form-control sketch-input" placeholder="再次輸入新密碼">
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-sketch-primary w-100" style="font-size: 1rem; padding: 12px;">
+              <i class="fa-solid fa-floppy-disk"></i> 儲存設定 (立即生效)
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- ======================= 模態對話框 MODALS ======================= -->
+
+  <!-- Modal 1: 登入教務處後台密碼對話框 -->
+  <div class="modal-backdrop" id="adminLoginModal">
+    <div class="modal-dialog sketch-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-lock"></i> 教務處管理員驗證</h3>
+        <button class="modal-close" id="closeAdminLoginModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+          此專區僅限教務處行政人員使用，預設密碼為 <strong>admin</strong>。
+        </p>
+        <div class="form-group">
+          <label for="adminPasswordInput">管理者密碼</label>
+          <input type="password" id="adminPasswordInput" class="form-control sketch-input" value="admin" placeholder="請輸入後台密碼">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sketch-outline" id="cancelAdminLoginBtn">取消</button>
+        <button class="btn btn-sketch-primary" id="confirmAdminLoginBtn"><i class="fa-solid fa-right-to-bracket"></i> 驗證並登入後台</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: 教師登記/編輯公開授課 (11大欄位) -->
+  <div class="modal-backdrop" id="openClassModal">
+    <div class="modal-dialog modal-lg sketch-card">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modalFormTitle"><i class="fa-solid fa-pen-to-square"></i> 線上登記公開授課 (符合教育局 11 大欄位)</h3>
+          <button class="modal-close" id="closeFormModalBtn">&times;</button>
+        </div>
+
+        <form id="openClassForm" class="modal-body">
+          <input type="hidden" id="formEntryId">
+
+          <div class="form-tip-box sketch-card">
+            <i class="fa-solid fa-circle-info"></i> 標記 <span class="required-star">*</span> 者為教育局規定必填欄位；其餘欄位為建議填列欄位。
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="formDate">公開授課日期 <span class="required-star">*</span></label>
+              <input type="date" id="formDate" class="form-control sketch-input" required>
+            </div>
+
+            <div class="form-group">
+              <label for="formPeriod">授課節次 <span class="required-star">*</span></label>
+              <select id="formPeriod" class="form-select sketch-input" required>
+                <option value="第 1 節">第 1 節 (08:40 - 09:25)</option>
+                <option value="第 2 節">第 2 節 (09:35 - 10:20)</option>
+                <option value="第 3 節">第 3 節 (10:30 - 11:15)</option>
+                <option value="第 4 節">第 4 節 (11:25 - 12:10)</option>
+                <option value="第 5 節">第 5 節 (13:30 - 14:15)</option>
+                <option value="第 6 節">第 6 節 (14:25 - 15:10)</option>
+                <option value="第 7 節">第 7 節 (15:20 - 16:05)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label for="formClassName">班級 <span class="required-star">*</span></label>
+              <input type="text" id="formClassName" class="form-control sketch-input" placeholder="例如：302" required>
+            </div>
+
+            <div class="form-group">
+              <label for="formTeacher">公開課堂授課教師 <span class="required-star">*</span></label>
+              <input type="text" id="formTeacher" class="form-control sketch-input" placeholder="教師姓名" required>
+            </div>
+
+            <div class="form-group">
+              <label for="formSubject">科目 (領域) <span class="required-star">*</span></label>
+              <select id="formSubject" class="form-select sketch-input" required>
+                <option value="國語">國語</option>
+                <option value="數學">數學</option>
+                <option value="自然">自然</option>
+                <option value="社會">社會</option>
+                <option value="英語">英語</option>
+                <option value="藝文">藝文</option>
+                <option value="健體">健體</option>
+                <option value="綜合">綜合</option>
+                <option value="科技">科技</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="formUnit">授課單元名稱與主題 <span class="required-star">*</span></label>
+            <input type="text" id="formUnit" class="form-control sketch-input" placeholder="例如：第 1 單元 水生家族與神奇水生植物" required>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="formOpenType">開放型態 <span class="required-star">*</span></label>
+              <select id="formOpenType" class="form-select sketch-input" required>
+                <option value="校內">校內公開授課</option>
+                <option value="區級">區級公開授課</option>
+                <option value="市級">市級公開授課</option>
+                <option value="全國">全國公開授課</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="formLocation">授課地點</label>
+              <input type="text" id="formLocation" class="form-control sketch-input" placeholder="例如：三年二班教室或自然實驗室">
+            </div>
+          </div>
+
+          <!-- 建議填列欄位 -->
+          <div class="form-section-divider">
+            <span>建議填列欄位 (備課與議課人員安排)</span>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="formPrepHost">備課主持人 (建議)</label>
+              <input type="text" id="formPrepHost" class="form-control sketch-input" placeholder="例如：張美珍 老師 (召集人)">
+            </div>
+
+            <div class="form-group">
+              <label for="formPostPrepHost">議課主持人 (建議)</label>
+              <input type="text" id="formPostPrepHost" class="form-control sketch-input" placeholder="例如：陳文雄 校長">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="formCoPrepGroup">共同備課教師類群 / 名單 (建議)</label>
+              <textarea id="formCoPrepGroup" class="form-control sketch-input" rows="2" placeholder="例如：自然與科技領域全體教師"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="formObservationGroup">觀課議課教師類群 / 名單 (建議)</label>
+              <textarea id="formObservationGroup" class="form-control sketch-input" rows="2" placeholder="例如：校內全體教師、本市報名教師"></textarea>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="formMaxObservers">開放線上報名席次</label>
+              <input type="number" id="formMaxObservers" class="form-control sketch-input" value="10" min="1" max="50">
+            </div>
+
+            <div class="form-group">
+              <label for="formLessonPlanUrl">教案 / 共備紀錄雲端連結</label>
+              <input type="url" id="formLessonPlanUrl" class="form-control sketch-input" placeholder="https://drive.google.com/...">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="formNotes">補充說明與備註</label>
+            <input type="text" id="formNotes" class="form-control sketch-input" placeholder="例如：會後於二樓會議室進行議課。">
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sketch-outline" id="saveDraftBtn">
+              <i class="fa-solid fa-floppy-disk"></i> 儲存為草稿
+            </button>
+            <button type="submit" class="btn btn-sketch-primary" id="submitToAdminBtn">
+              <i class="fa-solid fa-paper-plane"></i> 送出送審 (教務處)
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: 觀課詳細內容與報名 Modal -->
+  <div class="modal-backdrop" id="detailModal">
+    <div class="modal-dialog sketch-card">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-circle-info"></i> 公開授課詳細內容與線上觀課登記</h3>
+          <button class="modal-close" id="closeDetailModalBtn">&times;</button>
+        </div>
+
+        <div class="modal-body" id="detailModalBody">
+          <!-- JS 動態渲染內容 -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A4 橫式列印標準教育局報表 (Print Section) -->
+  <div id="bureauPrintSection" class="print-only-container">
+    <div class="print-header">
+      <h2 id="printReportTitle">114 學年度公開授課行事曆</h2>
+      <p class="print-meta">產出日期：<span id="printDateString">2026-08-15</span> | 彙整單位：教務處</p>
+    </div>
+
+    <table class="bureau-print-table">
+      <thead>
+        <tr>
+          <th width="40">場次</th>
+          <th width="80">時間</th>
+          <th width="60">節次</th>
+          <th width="50">班級</th>
+          <th width="80">授課教師</th>
+          <th width="80">科目(領域)</th>
+          <th>單元</th>
+          <th width="100">備課主持人</th>
+          <th>共同備課教師類群</th>
+          <th width="100">議課主持人</th>
+          <th>觀課議課教師類群</th>
+          <th width="60">開放型態</th>
+        </tr>
+      </thead>
+      <tbody id="bureauPrintTableBody">
+        <!-- JS 動態生成 -->
+      </tbody>
+    </table>
+
+    <div class="print-footer">
+      <p>備註：1. 必填欄位包含：時間、班級、公開授課教師、領域、單元、開放型態。 2. 其餘為建議填列欄位。</p>
+      <div class="print-signatures">
+        <span>承辦人：_______________</span>
+        <span>教務主任：_______________</span>
+        <span>校長：_______________</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript 腳本 -->
+  <script src="demo-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

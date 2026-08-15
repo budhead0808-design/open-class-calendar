@@ -1,0 +1,675 @@
+/* ==========================================================================
+   公開授課行事曆與管理系統 - 溫暖校園手繪風格 (Hand-drawn Sketchbook Aesthetic)
+   ========================================================================== */
+
+:root {
+  /* 手繪字體組合 */
+  --font-hand: 'Zen Maru Gothic', 'Noto Sans TC', -apple-system, sans-serif;
+  --font-sketch-num: 'Architects Daughter', 'Zen Maru Gothic', sans-serif;
+
+  /* 墨水與底色 (Ink & Parchment Paper Palette) */
+  --ink-border: #2c3e50;
+  --ink-shadow: #1e293b;
+  --bg-paper: #faf7f2;
+  --bg-card: #ffffff;
+
+  /* 主色彩調 (Warm Primary & Pastels) */
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-bg: #eef2ff;
+
+  /* 蠟筆 / 柔和水彩風狀態色 (Pastel Watercolors) */
+  --status-draft: #64748b;
+  --status-draft-bg: #f1f5f9;
+  --status-pending: #d97706;
+  --status-pending-bg: #fef3c7;
+  --status-approved: #0284c7;
+  --status-approved-bg: #e0f2fe;
+  --status-published: #059669;
+  --status-published-bg: #d1fae5;
+  --status-revision: #e11d48;
+  --status-revision-bg: #ffe4e6;
+
+  /* 開放型態手繪標籤色 */
+  --type-school: #16a34a;
+  --type-school-bg: #dcfce7;
+  --type-district: #2563eb;
+  --type-district-bg: #dbeafe;
+  --type-city: #9333ea;
+  --type-city-bg: #f3e8ff;
+  --type-national: #e11d48;
+  --type-national-bg: #ffe4e6;
+
+  /* 文字色彩 */
+  --text-main: #2c3e50;
+  --text-muted: #64748b;
+  --border-focus: #4f46e5;
+
+  /* 手繪不規則圓角與硬陰影 */
+  --sketch-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  --sketch-radius-sm: 12px 4px 10px 4px/4px 10px 4px 12px;
+  --sketch-shadow: 3px 4px 0px var(--ink-border);
+  --sketch-shadow-hover: 5px 6px 0px var(--ink-border);
+}
+
+/* 全局重置 */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-hand);
+  background-color: var(--bg-paper);
+  color: var(--text-main);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  background-image: radial-gradient(#e5e0d8 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* 手繪通用元件 - 卡片 */
+.sketch-card {
+  background: var(--bg-card);
+  border: 2.5px solid var(--ink-border) !important;
+  border-radius: var(--sketch-radius-sm);
+  box-shadow: var(--sketch-shadow);
+  transition: all 0.2s ease;
+}
+
+/* 頂部 Header 通用 */
+.app-header {
+  border-bottom: 2.5px solid var(--ink-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 0px rgba(44, 62, 80, 0.1);
+  transition: all 0.3s ease;
+}
+
+.frontend-header {
+  background: #ffffff;
+}
+
+.backend-header {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.backend-header .brand-text h1 {
+  color: #ffffff;
+}
+
+.backend-header .brand-subtitle {
+  color: #cbd5e1;
+}
+
+.header-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.brand-icon.sketch-badge {
+  width: 48px;
+  height: 48px;
+  background: #fef08a;
+  border: 2.5px solid var(--ink-border);
+  border-radius: var(--sketch-radius-sm);
+  box-shadow: 2px 3px 0px var(--ink-border);
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.brand-icon.admin-icon {
+  background: #a7f3d0;
+}
+
+.brand-text h1 {
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--text-main);
+  background: linear-gradient(180deg, transparent 65%, #fef08a 65%);
+  display: inline-block;
+}
+
+.brand-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+/* 手繪風按鈕系統 (Sketch Buttons) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: var(--font-hand);
+  border: 2.5px solid var(--ink-border);
+  border-radius: var(--sketch-radius-sm);
+  cursor: pointer;
+  box-shadow: var(--sketch-shadow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--sketch-shadow-hover);
+}
+
+.btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 2px 0px var(--ink-border);
+}
+
+.btn-sketch-primary {
+  background-color: #6366f1;
+  color: white;
+}
+.btn-sketch-primary:hover {
+  background-color: #4f46e5;
+}
+
+.btn-sketch-secondary {
+  background-color: #38bdf8;
+  color: #0f172a;
+}
+.btn-sketch-secondary:hover {
+  background-color: #0284c7;
+  color: white;
+}
+
+.btn-sketch-success {
+  background-color: #4ade80;
+  color: #0f172a;
+}
+.btn-sketch-success:hover {
+  background-color: #16a34a;
+  color: white;
+}
+
+.btn-sketch-outline {
+  background-color: #ffffff;
+  color: var(--text-main);
+}
+.btn-sketch-outline:hover {
+  background-color: #fef08a;
+}
+
+.btn-sketch-danger {
+  background-color: #f43f5e;
+  color: white;
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  border-width: 2px;
+}
+
+.btn-icon.sketch-btn-icon {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: white;
+  border: 2px solid var(--ink-border);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0px var(--ink-border);
+  color: var(--text-main);
+}
+
+/* 頂部通知 Banner */
+.banner-notice {
+  background: #fef08a;
+  color: #1e293b;
+  font-size: 0.9rem;
+  padding: 10px 1.5rem;
+  margin: 1rem 1.5rem 0 1.5rem;
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.notice-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notice-content { flex: 1; font-weight: 500; }
+.notice-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: #1e293b; font-weight: 700; }
+
+/* 主要內容區 Layout */
+.main-wrapper {
+  max-width: 1440px;
+  margin: 1.5rem auto;
+  padding: 0 1.5rem;
+}
+
+.portal-title-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px dashed var(--ink-border);
+  padding-bottom: 0.85rem;
+}
+
+.portal-title-line h2 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--text-main);
+}
+
+.sketch-tag {
+  background: #e0e7ff;
+  border: 2px solid var(--ink-border);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: 2px 2px 0px var(--ink-border);
+}
+
+.controls-card {
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.view-tabs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  border: 2px solid var(--ink-border);
+  background: #ffffff;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-main);
+  border-radius: var(--sketch-radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 2px 2px 0px var(--ink-border);
+  transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+  background: #fef08a;
+  transform: translateY(-1px);
+}
+
+.tab-btn.active {
+  background: #6366f1;
+  color: white;
+  box-shadow: 3px 3px 0px var(--ink-border);
+}
+
+.badge-count {
+  background: #f43f5e;
+  color: white;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 900;
+}
+
+/* 手繪輸入框 (Sketch Inputs) */
+.sketch-input {
+  border: 2px solid var(--ink-border) !important;
+  border-radius: var(--sketch-radius-sm) !important;
+  padding: 8px 14px !important;
+  font-family: var(--font-hand) !important;
+  font-size: 0.9rem !important;
+  background: white !important;
+  color: var(--text-main) !important;
+  outline: none !important;
+  box-shadow: 2px 2px 0px rgba(44, 62, 80, 0.15) !important;
+  transition: all 0.2s ease !important;
+}
+
+.sketch-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 3px 3px 0px var(--primary) !important;
+}
+
+.input-with-icon {
+  position: relative;
+  min-width: 280px;
+}
+
+.input-with-icon i {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.input-with-icon .sketch-input {
+  padding-left: 40px !important;
+  width: 100%;
+}
+
+.filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.portal-section.hidden, .admin-subview.hidden {
+  display: none !important;
+}
+
+/* 手繪表格 (Sketch Table) */
+.table-responsive-wrapper {
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+
+.bureau-table.sketch-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9rem;
+}
+
+.bureau-table.sketch-table th {
+  background: #f1f5f9;
+  color: var(--text-main);
+  font-weight: 900;
+  padding: 12px 14px;
+  border-bottom: 2.5px solid var(--ink-border);
+  white-space: nowrap;
+}
+
+.bureau-table.sketch-table td {
+  padding: 12px 14px;
+  border-bottom: 1.5px solid #cbd5e1;
+  vertical-align: middle;
+  background: white;
+}
+
+.bureau-table.sketch-table tbody tr:hover td {
+  background-color: #fefce8;
+}
+
+/* Badges 手繪質感標籤 */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1.5px solid var(--ink-border);
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 1.5px 1.5px 0px var(--ink-border);
+}
+
+.badge-draft { background: var(--status-draft-bg); color: var(--status-draft); }
+.badge-pending { background: var(--status-pending-bg); color: var(--status-pending); }
+.badge-approved { background: var(--status-approved-bg); color: var(--status-approved); }
+.badge-published { background: var(--status-published-bg); color: var(--status-published); }
+.badge-revision { background: var(--status-revision-bg); color: var(--status-revision); }
+
+.badge-type-school { background: var(--type-school-bg); color: var(--type-school); }
+.badge-type-district { background: var(--type-district-bg); color: var(--type-district); }
+.badge-type-city { background: var(--type-city-bg); color: var(--type-city); }
+.badge-type-national { background: var(--type-national-bg); color: var(--type-national); }
+
+/* 後台控制台 Dashboards */
+.admin-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.metric-card {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.metric-icon {
+  width: 52px;
+  height: 52px;
+  border: 2px solid var(--ink-border);
+  border-radius: var(--sketch-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 2px 2px 0px var(--ink-border);
+}
+
+.icon-blue { background: #bae6fd; color: #0284c7; }
+.icon-amber { background: #fef08a; color: #b45309; }
+.icon-emerald { background: #bbf7d0; color: #15803d; }
+.icon-purple { background: #e9d5ff; color: #7e22ce; }
+
+.metric-info { display: flex; flex-direction: column; }
+.metric-label { font-size: 0.82rem; color: var(--text-muted); font-weight: 700; }
+.metric-value { font-size: 1.7rem; font-weight: 900; color: var(--text-main); font-family: var(--font-sketch-num); }
+
+.admin-card { padding: 1.25rem; }
+.admin-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+
+/* 7大流程時間軸 */
+.process-card { padding: 1.75rem; }
+.process-card-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px dashed var(--ink-border); padding-bottom: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+
+.timeline-container { display: flex; flex-direction: column; gap: 1rem; position: relative; padding-left: 20px; }
+.timeline-container::before { content: ''; position: absolute; left: 36px; top: 15px; bottom: 15px; width: 3px; background: #cbd5e1; border-left: 2px dashed var(--ink-border); }
+
+.timeline-item { display: flex; gap: 1.25rem; position: relative; z-index: 1; }
+
+.timeline-badge {
+  width: 38px;
+  height: 38px;
+  background: #fef08a;
+  color: var(--text-main);
+  border: 2px solid var(--ink-border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1rem;
+  font-family: var(--font-sketch-num);
+  flex-shrink: 0;
+  box-shadow: 2px 2px 0px var(--ink-border);
+}
+
+.timeline-content {
+  background: #ffffff;
+  border: 2px solid var(--ink-border);
+  border-radius: var(--sketch-radius-sm);
+  padding: 0.9rem 1.2rem;
+  flex: 1;
+  box-shadow: 2px 3px 0px var(--ink-border);
+}
+
+.timeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; }
+.timeline-title { font-size: 0.98rem; font-weight: 900; color: var(--text-main); }
+
+/* 月曆 Grid 樣式 */
+.calendar-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.month-nav { display: flex; align-items: center; gap: 0.75rem; }
+.month-title { font-size: 1.25rem; font-weight: 900; color: var(--text-main); min-width: 150px; text-align: center; }
+
+.calendar-legend { display: flex; gap: 1rem; font-size: 0.82rem; color: var(--text-muted); font-weight: 700; }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+
+.dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink-border); display: inline-block; }
+.dot-school { background: var(--type-school); }
+.dot-district { background: var(--type-district); }
+.dot-city { background: var(--type-city); }
+.dot-national { background: var(--type-national); }
+
+.calendar-grid-container { overflow: hidden; }
+.calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); background: #f1f5f9; border-bottom: 2px solid var(--ink-border); text-align: center; font-weight: 900; font-size: 0.88rem; color: var(--text-main); padding: 10px 0; }
+.calendar-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(110px, auto); }
+
+.calendar-day-cell {
+  border-right: 1.5px solid #cbd5e1;
+  border-bottom: 1.5px solid #cbd5e1;
+  padding: 8px;
+  background: white;
+  position: relative;
+  min-height: 110px;
+}
+.calendar-day-cell:nth-child(7n) { border-right: none; }
+.calendar-day-cell.other-month { background: #f8fafc; color: var(--text-light); }
+.calendar-day-cell.today { background: #fefce8; }
+
+.calendar-day-number {
+  font-size: 0.88rem;
+  font-weight: 900;
+  font-family: var(--font-sketch-num);
+  margin-bottom: 6px;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 50%;
+}
+
+.calendar-day-cell.today .calendar-day-number {
+  background: #f59e0b;
+  color: white;
+  border: 1px solid var(--ink-border);
+}
+
+.event-pill {
+  padding: 4px 8px;
+  border: 1.5px solid var(--ink-border);
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+  box-shadow: 1px 1px 0px var(--ink-border);
+}
+
+.event-pill.type-school { background: var(--type-school-bg); }
+.event-pill.type-district { background: var(--type-district-bg); }
+.event-pill.type-city { background: var(--type-city-bg); }
+.event-pill.type-national { background: var(--type-national-bg); }
+
+/* 週曆網格 */
+.week-grid-container { padding: 1rem; }
+.week-header-row { display: grid; grid-template-columns: 80px repeat(5, 1fr); background: #f1f5f9; border-bottom: 2px solid var(--ink-border); text-align: center; font-weight: 900; padding: 10px 0; }
+.week-period-row { display: grid; grid-template-columns: 80px repeat(5, 1fr); border-bottom: 1.5px solid #cbd5e1; min-height: 80px; }
+.week-period-label { background: #f8fafc; border-right: 1.5px solid #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 900; color: var(--text-muted); }
+.week-cell { border-right: 1.5px solid #cbd5e1; padding: 6px; }
+
+/* Modal 通用 */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.modal-backdrop.active { opacity: 1; pointer-events: auto; }
+.modal-dialog { background: white; width: 90%; max-width: 650px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; transform: translateY(20px); transition: transform 0.2s ease; }
+.modal-backdrop.active .modal-dialog { transform: translateY(0); }
+.modal-dialog.modal-lg { max-width: 850px; }
+
+.modal-header { padding: 1.25rem 1.5rem; border-bottom: 2.5px solid var(--ink-border); display: flex; align-items: center; justify-content: space-between; background: #fef08a; }
+.modal-header h3 { font-size: 1.15rem; font-weight: 900; }
+.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-main); font-weight: 900; }
+.modal-body { padding: 1.5rem; overflow-y: auto; }
+.modal-footer { padding: 1rem 1.5rem; border-top: 2.5px solid var(--ink-border); display: flex; justify-content: flex-end; gap: 0.75rem; background: #f8fafc; }
+
+/* 表單元件 */
+.form-tip-box { background: #e0f2fe; border: 2px solid var(--ink-border); color: #0369a1; padding: 10px 14px; border-radius: var(--sketch-radius-sm); font-size: 0.85rem; font-weight: 700; margin-bottom: 1.25rem; }
+.required-star { color: #e11d48; font-weight: 900; }
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; color: var(--text-main); }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+.form-section-divider { border-bottom: 2px dashed var(--ink-border); line-height: 0.1em; margin: 1.5rem 0 1rem 0; text-align: center; }
+.form-section-divider span { background: white; padding: 0 10px; font-size: 0.82rem; color: var(--text-muted); font-weight: 900; }
+
+.hidden { display: none !important; }
+
+/* A4 橫式列印 */
+.print-only-container { display: none; }
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: white !important; color: black !important; font-size: 10pt; font-family: sans-serif; }
+  .app-header, .banner-notice, .controls-card, .main-wrapper, .modal-backdrop { display: none !important; }
+  .print-only-container { display: block !important; }
+  .print-header { text-align: center; margin-bottom: 12px; }
+  .print-header h2 { font-size: 16pt; font-weight: bold; }
+  .print-meta { font-size: 9pt; color: #444; }
+  .bureau-print-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  .bureau-print-table th, .bureau-print-table td { border: 1px solid #000; padding: 5px 6px; text-align: left; vertical-align: top; word-break: break-all; }
+  .bureau-print-table th { background-color: #f0f0f0 !important; font-weight: bold; text-align: center; -webkit-print-color-adjust: exact; }
+  .print-footer { margin-top: 15px; font-size: 8.5pt; }
+  .print-signatures { margin-top: 30px; display: flex; justify-content: space-between; padding: 0 40px; font-size: 10pt; }
+}
