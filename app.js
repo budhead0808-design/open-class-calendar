@@ -8,7 +8,7 @@
 // ==========================================================================
 class DataStore {
   constructor() {
-    this.storageDataKey = 'OPEN_CLASS_CALENDAR_DATA_V2';
+    this.storageDataKey = 'OPEN_CLASS_CALENDAR_DATA_V3';
     this.storageSettingsKey = 'OPEN_CLASS_SETTINGS_V2';
     this.currentPortal = 'frontend'; // 'frontend' | 'backend'
     this.adminSubView = 'dashboard';
