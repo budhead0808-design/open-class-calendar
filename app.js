@@ -19,9 +19,18 @@ class DataStore {
   }
 
   loadData() {
-    const raw = localStorage.getItem(this.storageDataKey);
-    if (raw) {
-      try { return JSON.parse(raw); } catch (e) { console.error('Data corrupted', e); }
+    const keysToTry = ['OPEN_CLASS_CALENDAR_DATA_V3', 'OPEN_CLASS_CALENDAR_DATA_V2', 'OPEN_CLASS_CALENDAR_DATA_V1'];
+    for (const key of keysToTry) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            this.saveData(parsed);
+            return parsed;
+          }
+        } catch (e) { console.error('Data migration error', e); }
+      }
     }
     this.saveData(DEFAULT_OPEN_CLASSES);
     return [...DEFAULT_OPEN_CLASSES];
@@ -32,9 +41,18 @@ class DataStore {
   }
 
   loadSettings() {
-    const raw = localStorage.getItem(this.storageSettingsKey);
-    if (raw) {
-      try { return JSON.parse(raw); } catch (e) { console.error('Settings corrupted', e); }
+    const keysToTry = ['OPEN_CLASS_SETTINGS_V2', 'OPEN_CLASS_SETTINGS_V1'];
+    for (const key of keysToTry) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.siteTitle) {
+            this.saveSettings(parsed);
+            return parsed;
+          }
+        } catch (e) { console.error('Settings migration error', e); }
+      }
     }
     const defaultSettings = {
       siteTitle: "新北市 OO 國民小學 114 學年度公開授課行事曆",
@@ -420,6 +438,64 @@ function initSettingsForm() {
 
     alert('✅ 系統設定已成功儲存！' + (passwordChanged ? '\n後台登入密碼已成功更新！' : ''));
   });
+
+  // JSON 全庫備份與還原
+  const exportBackupBtn = document.getElementById('exportBackupJsonBtn');
+  const importBackupBtn = document.getElementById('importBackupJsonBtn');
+  const importFileInput = document.getElementById('importBackupFileInput');
+
+  if (exportBackupBtn) {
+    exportBackupBtn.addEventListener('click', () => {
+      const backupData = {
+        openClasses: store.openClasses,
+        settings: store.settings,
+        exportDate: new Date().toISOString()
+      };
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${store.settings.siteTitle || '公開授課'}_全庫備份_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  }
+
+  if (importBackupBtn && importFileInput) {
+    importBackupBtn.addEventListener('click', () => {
+      importFileInput.click();
+    });
+
+    importFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (imported.openClasses && Array.isArray(imported.openClasses)) {
+            store.saveData(imported.openClasses);
+            store.openClasses = imported.openClasses;
+
+            if (imported.settings && imported.settings.siteTitle) {
+              store.saveSettings(imported.settings);
+            }
+
+            applySystemSettings();
+            renderCurrentPortal();
+            alert('✅ 成功匯入還原全庫備份資料！所有公開授課場次與學校標題已完全復原。');
+          } else {
+            alert('⚠️ 備份檔案格式不正確，請確認上傳有效的 JSON 備份檔。');
+          }
+        } catch (err) {
+          alert('⚠️ 解析備份檔案失敗：' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
 }
 
 function capitalize(s) {

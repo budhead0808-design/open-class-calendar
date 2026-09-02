@@ -378,6 +378,27 @@
               </div>
             </div>
 
+            <!-- 區塊 3: 系統資料備份與還原 (JSON 備份/還原) -->
+            <div class="settings-box sketch-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+              <h4 style="color: #059669; margin-bottom: 0.5rem;"><i class="fa-solid fa-box-archive"></i> 3. 系統資料全庫備份與還原 (跨電腦匯入匯出)</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                預設資料保存在目前瀏覽器中。您可以隨時匯出 JSON 備份檔，更換電腦或瀏覽器時只需匯入備份檔即可完全還原所有資料與學校標題！
+              </p>
+              
+              <div class="form-grid-2">
+                <button type="button" class="btn btn-sketch-success w-100" id="exportBackupJsonBtn">
+                  <i class="fa-solid fa-download"></i> 匯出下載全庫備份檔 (JSON)
+                </button>
+                
+                <div>
+                  <button type="button" class="btn btn-sketch-secondary w-100" id="importBackupJsonBtn">
+                    <i class="fa-solid fa-upload"></i> 匯入還原備份資料 (JSON)
+                  </button>
+                  <input type="file" id="importBackupFileInput" accept=".json" style="display: none;">
+                </div>
+              </div>
+            </div>
+
             <button type="submit" class="btn btn-sketch-primary w-100" style="font-size: 1rem; padding: 12px;">
               <i class="fa-solid fa-floppy-disk"></i> 儲存設定 (立即生效)
             </button>
