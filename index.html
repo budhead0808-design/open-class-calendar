@@ -399,6 +399,37 @@
               </div>
             </div>
 
+            <!-- 區塊 4: 每日自動備份快照與歷史紀錄 (30 天快照) -->
+            <div class="settings-box sketch-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+              <h4 style="color: #6366f1; margin-bottom: 0.5rem;"><i class="fa-solid fa-clock-rotate-left"></i> 4. 每日自動快照備份與歷史復原 (近 30 天紀錄)</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                系統每日開啟或有資料變更時，會自動為您建立「每日快照備份」。您可以查閱近 30 天的歷史快照，下載備份或一鍵復原至特定日期的狀態！
+              </p>
+              
+              <div class="table-responsive-wrapper" style="max-height: 220px; overflow-y: auto; margin-bottom: 1rem;">
+                <table class="bureau-table sketch-table" style="font-size: 0.85rem;">
+                  <thead>
+                    <tr>
+                      <th>快照日期</th>
+                      <th>資料筆數</th>
+                      <th>學校標題</th>
+                      <th>備份操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="autoBackupTableBody">
+                    <!-- JS 動態渲染近 30 天每日自動快照 -->
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem;">
+                  <input type="checkbox" id="autoDownloadDailyCheckbox">
+                  每日開啟後台時，自動觸發瀏覽器下載當日 JSON 備份檔
+                </label>
+              </div>
+            </div>
+
             <button type="submit" class="btn btn-sketch-primary w-100" style="font-size: 1rem; padding: 12px;">
               <i class="fa-solid fa-floppy-disk"></i> 儲存設定 (立即生效)
             </button>

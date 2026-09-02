@@ -10,12 +10,14 @@ class DataStore {
   constructor() {
     this.storageDataKey = 'OPEN_CLASS_CALENDAR_DATA_V3';
     this.storageSettingsKey = 'OPEN_CLASS_SETTINGS_V2';
+    this.storageSnapshotsKey = 'OPEN_CLASS_DAILY_SNAPSHOTS_V1';
     this.currentPortal = 'frontend'; // 'frontend' | 'backend'
     this.adminSubView = 'dashboard';
     this.currentDate = new Date();
 
     this.openClasses = this.loadData();
     this.settings = this.loadSettings();
+    this.triggerDailySnapshot();
   }
 
   loadData() {
@@ -37,7 +39,9 @@ class DataStore {
   }
 
   saveData(data = this.openClasses) {
+    this.openClasses = data;
     localStorage.setItem(this.storageDataKey, JSON.stringify(data));
+    this.triggerDailySnapshot();
   }
 
   loadSettings() {
@@ -66,6 +70,42 @@ class DataStore {
   saveSettings(newSettings = this.settings) {
     this.settings = newSettings;
     localStorage.setItem(this.storageSettingsKey, JSON.stringify(newSettings));
+    this.triggerDailySnapshot();
+  }
+
+  getSnapshots() {
+    const raw = localStorage.getItem(this.storageSnapshotsKey);
+    if (raw) {
+      try { return JSON.parse(raw); } catch (e) { console.error('Snapshot read error', e); }
+    }
+    return [];
+  }
+
+  triggerDailySnapshot() {
+    if (!this.openClasses || !this.settings) return;
+    const snapshots = this.getSnapshots();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    const newSnapshot = {
+      date: todayStr,
+      time: timeStr,
+      count: this.openClasses ? this.openClasses.length : 0,
+      title: this.settings ? this.settings.siteTitle : '',
+      openClasses: this.openClasses,
+      settings: this.settings
+    };
+
+    const idx = snapshots.findIndex(s => s.date === todayStr);
+    if (idx !== -1) {
+      snapshots[idx] = newSnapshot;
+    } else {
+      snapshots.unshift(newSnapshot);
+    }
+
+    const trimmed = snapshots.slice(0, 30);
+    localStorage.setItem(this.storageSnapshotsKey, JSON.stringify(trimmed));
   }
 
   getAll() {
@@ -517,6 +557,81 @@ function renderBackendPortal() {
     renderAdminWeekSchedule();
   } else if (store.adminSubView === 'master') {
     renderAdminMasterTable();
+  } else if (store.adminSubView === 'settings') {
+    renderAutoBackupTable();
+  }
+}
+
+function renderAutoBackupTable() {
+  const tbody = document.getElementById('autoBackupTableBody');
+  if (!tbody) return;
+
+  const snapshots = store.getSnapshots();
+  tbody.innerHTML = '';
+
+  if (snapshots.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-2 text-muted">目前尚無每日自動備份快照。</td></tr>`;
+    return;
+  }
+
+  snapshots.forEach(s => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${s.date}</strong> <small class="text-muted">${s.time || ''}</small></td>
+      <td><span class="badge badge-approved">${s.count} 筆授課</span></td>
+      <td><small>${s.title || '-'}</small></td>
+      <td>
+        <button class="btn btn-sm btn-sketch-success" onclick="downloadSnapshotJson('${s.date}')">
+          <i class="fa-solid fa-download"></i> 下載
+        </button>
+        <button class="btn btn-sm btn-sketch-outline" onclick="restoreSnapshotJson('${s.date}')">
+          <i class="fa-solid fa-rotate-left"></i> 復原
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const autoCheckbox = document.getElementById('autoDownloadDailyCheckbox');
+  if (autoCheckbox) {
+    autoCheckbox.checked = !!store.settings.autoDownloadDaily;
+    autoCheckbox.onchange = (e) => {
+      store.settings.autoDownloadDaily = e.target.checked;
+      store.saveSettings();
+    };
+  }
+}
+
+function downloadSnapshotJson(dateStr) {
+  const snapshots = store.getSnapshots();
+  const target = snapshots.find(s => s.date === dateStr);
+  if (!target) return alert('找不到該日期的快照檔！');
+
+  const jsonStr = JSON.stringify(target, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${target.title || '公開授課'}_每日快照備份_${dateStr}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function restoreSnapshotJson(dateStr) {
+  const snapshots = store.getSnapshots();
+  const target = snapshots.find(s => s.date === dateStr);
+  if (!target) return alert('找不到該日期的快照檔！');
+
+  if (confirm(`確定要將系統狀態一鍵復原至【${dateStr}】的每日快照備份嗎？\n復原後將還原該日的所有公開授課與學校標題。`)) {
+    if (target.openClasses) {
+      store.saveData(target.openClasses);
+    }
+    if (target.settings) {
+      store.saveSettings(target.settings);
+    }
+    applySystemSettings();
+    renderCurrentPortal();
+    alert(`✅ 已成功將系統一鍵復原至【${dateStr}】的備份狀態！`);
   }
 }
 
