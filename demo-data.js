@@ -21,6 +21,7 @@ const DEFAULT_OPEN_CLASSES = [
       { name: "林志明 (測試)", school: "新北市中山國小", time: "2026-09-25 10:15" }
     ],
     lessonPlanUrl: "https://drive.google.com/example/plan-1",
+    teacherEmail: "wang@apps.ntpc.edu.tw",
     notes: "【測試用範例資料】請觀課老師準備觀察記錄表，預計安排實驗操作觀察。",
     createdDate: "2026-09-10"
   },
@@ -31,6 +32,7 @@ const DEFAULT_OPEN_CLASSES = [
     period: "第 3 節",
     className: "305",
     teacher: "羅任鎗",
+    teacherEmail: "luo@apps.ntpc.edu.tw",
     subject: "資訊",
     unit: "第二單元認識網路",
     openType: "校內",

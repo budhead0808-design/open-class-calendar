@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 115學年度新北市中山國民小學公開授課行事曆 - Google 試算表雲端同步後端 (Google Apps Script)
  * 
  * 【使用教學 3 步驟】：
@@ -51,26 +51,36 @@ function doPost(e) {
       updatePassword(sheetSettings, payload.password);
     } else if (action === batchUpdateStatus) {
       batchUpdateStatus(sheetData, payload.ids, payload.status);
-    } else if (action === syncAll) {
+    } else if (action === "syncAll") {
       syncAllData(sheetData, sheetSettings, payload.openClasses, payload.settings);
+    } else if (action === "sendReturnEmail") {
+      try {
+        MailApp.sendEmail({
+          to: payload.to,
+          subject: payload.subject,
+          body: payload.body
+        });
+      } catch (mailErr) {
+        console.error("MailApp error:", mailErr);
+      }
     }
 
     return ContentService.createTextOutput(JSON.stringify({
-      status: success
+      status: "success"
     })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({
-      status: error,
+      status: "error",
       message: err.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 var HEADERS = [
-  id, sessionId, date, period, className, teacher, subject, 
-  unit, prepHost, coPrepGroup, postPrepHost, observationGroup, 
-  openType, status, location, maxObservers, registeredObservers, 
-  lessonPlanUrl, notes, createdDate
+  "id", "sessionId", "date", "period", "className", "teacher", "teacherEmail", "subject", 
+  "unit", "prepHost", "coPrepGroup", "postPrepHost", "observationGroup", 
+  "openType", "status", "location", "maxObservers", "registeredObservers", 
+  "lessonPlanUrl", "notes", "createdDate"
 ];
 
 function getOrCreateSheet(ss, sheetName) {

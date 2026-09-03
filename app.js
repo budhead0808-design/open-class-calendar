@@ -1,7 +1,60 @@
-/**
- * 公開授課行事曆與管理系統 - app.js
- * 包含：手繪風格介面、前後台獨立分工、自訂網站標題與自訂後台密碼修改
- */
+// 日期中文化格式化函式 (去除台北標準時間、GMT 等字眼，一律顯示為 2026年10月5日)
+function formatDateChinese(dateStr) {
+  if (!dateStr) return '';
+  const s = String(dateStr).trim();
+
+  // 若已經是「YYYY年M月D日」格式
+  if (/^\d{4}年\d{1,2}月\d{1,2}日$/.test(s)) {
+    return s;
+  }
+
+  // 嘗試解析常見的 2026-10-05, 2026/10/05
+  const match1 = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (match1) {
+    return `${match1[1]}年${parseInt(match1[2], 10)}月${parseInt(match1[3], 10)}日`;
+  }
+
+  // 嘗試解析 Date 物件或 "Mon Oct 05 2026 ... GMT+0800 (台北標準時間)"
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    return `${y}年${m}月${day}日`;
+  }
+
+  // 正則抓取任意四位年份與其後的月日
+  const match2 = s.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (match2) {
+    return `${match2[1]}年${parseInt(match2[2], 10)}月${parseInt(match2[3], 10)}日`;
+  }
+
+  return s;
+}
+
+// 轉為 input[type=date] 標準的 YYYY-MM-DD
+function normalizeDateIso(dateStr) {
+  if (!dateStr) return '';
+  const s = String(dateStr).trim();
+
+  const match = s.match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+  if (match) {
+    const y = match[1];
+    const m = match[2].padStart(2, '0');
+    const day = match[3].padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  return s;
+}
 
 // ==========================================================================
 // 1. Data Store & Settings Management
@@ -160,6 +213,19 @@ class DataStore {
         (item.location && item.location.toLowerCase().includes(q))
       );
     }
+
+    // 依日期先後順序排列（由早到晚），若同一天則按節次順序排序
+    result.sort((a, b) => {
+      const dateA = normalizeDateIso(a.date);
+      const dateB = normalizeDateIso(b.date);
+      if (dateA !== dateB) {
+        return dateA.localeCompare(dateB);
+      }
+      const pA = parseInt((a.period || '').replace(/\D/g, ''), 10) || 0;
+      const pB = parseInt((b.period || '').replace(/\D/g, ''), 10) || 0;
+      return pA - pB;
+    });
+
     return result;
   }
 
@@ -513,64 +579,6 @@ function initFrontendFilters() {
   document.getElementById('frontendRegisterBtn').addEventListener('click', () => {
     openFormModal();
   });
-}
-
-// 日期中文化格式化函式 (去除台北標準時間、GMT 等字眼，一律顯示為 2026年10月5日)
-function formatDateChinese(dateStr) {
-  if (!dateStr) return '';
-  const s = String(dateStr).trim();
-
-  // 若已經是「YYYY年M月D日」格式
-  if (/^\d{4}年\d{1,2}月\d{1,2}日$/.test(s)) {
-    return s;
-  }
-
-  // 嘗試解析常見的 2026-10-05, 2026/10/05
-  const match1 = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
-  if (match1) {
-    return `${match1[1]}年${parseInt(match1[2], 10)}月${parseInt(match1[3], 10)}日`;
-  }
-
-  // 嘗試解析 Date 物件或 "Mon Oct 05 2026 ... GMT+0800 (台北標準時間)"
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) {
-    const y = d.getFullYear();
-    const m = d.getMonth() + 1;
-    const day = d.getDate();
-    return `${y}年${m}月${day}日`;
-  }
-
-  // 正則抓取任意四位年份與其後的月日
-  const match2 = s.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
-  if (match2) {
-    return `${match2[1]}年${parseInt(match2[2], 10)}月${parseInt(match2[3], 10)}日`;
-  }
-
-  return s;
-}
-
-// 轉為 input[type=date] 標準的 YYYY-MM-DD
-function normalizeDateIso(dateStr) {
-  if (!dateStr) return '';
-  const s = String(dateStr).trim();
-
-  const match = s.match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
-  if (match) {
-    const y = match[1];
-    const m = match[2].padStart(2, '0');
-    const day = match[3].padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-
-  return s;
 }
 
 function renderFrontendPortal() {
@@ -1011,7 +1019,10 @@ function renderAdminDashboard() {
       <td><input type="checkbox" class="admin-pending-check" value="${item.id}"></td>
       <td><strong style="color: var(--primary); font-size: 0.95rem;">${formatDateChinese(item.date)}</strong><br><small class="text-muted">${item.period}</small></td>
       <td>${item.className} 班</td>
-      <td><strong>${item.teacher}</strong></td>
+      <td>
+        <strong>${item.teacher}</strong>
+        ${item.teacherEmail ? `<br><small class="text-muted"><i class="fa-solid fa-envelope"></i> ${item.teacherEmail}</small>` : ''}
+      </td>
       <td><span class="badge badge-approved">${item.subject}</span><br><small>${item.unit}</small></td>
       <td><span class="badge badge-type-${getOpenTypeBadgeClass(item.openType)}">${item.openType}</span></td>
       <td>${item.createdDate || '-'}</td>
@@ -1039,10 +1050,54 @@ function adminPublishItem(id) {
 }
 
 function adminReturnItem(id) {
-  const comment = prompt('請輸入退回修正原因：');
-  if (comment !== null) {
-    store.updateEntry(id, { status: '需修正', revisionComment: comment });
-    alert('已退回給教師修正。');
+  const target = store.getAll().find(i => i.id === id);
+  if (!target) return;
+
+  const comment = prompt(`請輸入退回【${target.teacher} 老師】修正之具體原因與建議：`);
+  if (comment !== null && comment.trim() !== '') {
+    store.updateEntry(id, { status: '需修正', revisionComment: comment.trim() });
+
+    const teacherEmail = target.teacherEmail || target.email;
+    if (teacherEmail) {
+      const emailSubject = `【新北市中山國小教務處】公開授課申請退回修正通知 - ${target.teacher}老師`;
+      const emailBody = 
+`${target.teacher} 老師 您好：
+
+您於「115學年度新北市中山國民小學公開授課行事曆」所登記之場次：
+● 授課日期：${formatDateChinese(target.date)} (${target.period})
+● 班級領域：${target.className} 班 / ${target.subject}
+● 單元名稱：${target.unit}
+
+經教務處審核，請依以下意見進行修正：
+--------------------------------------------------
+【退回修正意見】：
+${comment.trim()}
+--------------------------------------------------
+
+請點擊以下網址進入系統修正並重新送審：
+https://budhead0808-design.github.io/open-class-calendar/
+
+新北市板橋區中山國民小學 教務處 敬上`;
+
+      // 嘗試透過 Google Apps Script 雲端寄發通知信
+      store.pushToCloud('sendReturnEmail', null, {
+        to: teacherEmail,
+        subject: emailSubject,
+        body: emailBody,
+        teacher: target.teacher
+      });
+
+      // 同時提供 mailto 開啟本地郵件軟體發信確認
+      const mailtoUrl = `mailto:${encodeURIComponent(teacherEmail)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+      
+      const shouldOpenClient = confirm(`已將案件狀態更新為「需修正」！\n\n系統已準備發送退件通知信給：\n📧 ${target.teacher} 老師 (${teacherEmail})\n\n是否立即開啟您的郵件軟體（如 Outlook / Gmail）預覽並發送此通知信？`);
+      if (shouldOpenClient) {
+        window.location.href = mailtoUrl;
+      }
+    } else {
+      alert(`已退回案件並標註需修正！\n\n⚠️ 提醒：該筆資料未填寫教師 Email，請手動告知教師修正意見：\n「${comment.trim()}」`);
+    }
+
     renderBackendPortal();
   }
 }
@@ -1053,12 +1108,18 @@ function renderAdminMasterTable() {
 
   const all = store.getAll();
   all.forEach((item, idx) => {
+    const regCount = item.registeredObservers ? item.registeredObservers.length : 0;
+    const maxObs = item.maxObservers || 10;
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${item.sessionId || idx + 1}</strong></td>
       <td><div style="font-weight: 900; color: var(--primary); font-size: 0.95rem;">${formatDateChinese(item.date)}</div><small class="text-muted">${item.period}</small></td>
       <td>${item.className} 班</td>
-      <td><strong>${item.teacher}</strong></td>
+      <td>
+        <strong>${item.teacher}</strong>
+        ${item.teacherEmail ? `<br><small class="text-muted"><i class="fa-solid fa-envelope"></i> ${item.teacherEmail}</small>` : ''}
+      </td>
       <td><span class="badge badge-approved">${item.subject}</span></td>
       <td>${item.unit}</td>
       <td>${item.prepHost || '-'}</td>
@@ -1067,8 +1128,13 @@ function renderAdminMasterTable() {
       <td><small>${(item.observationGroup || '-').replace(/\n/g, ' ')}</small></td>
       <td><span class="badge badge-type-${getOpenTypeBadgeClass(item.openType)}">${item.openType}</span></td>
       <td><span class="badge badge-${getStatusBadgeClass(item.status)}">${item.status}</span></td>
-      <td>
-        <button class="btn btn-sm btn-sketch-outline" onclick="openFormModal('${item.id}')"><i class="fa-solid fa-pen"></i> 編輯</button>
+      <td style="white-space: nowrap;">
+        <button class="btn btn-sm btn-sketch-primary" style="margin-right: 4px;" onclick="openDetailModal('${item.id}')" title="管理本場次觀課教師名單與重複報名">
+          <i class="fa-solid fa-users"></i> 觀課(${regCount}/${maxObs})
+        </button>
+        <button class="btn btn-sm btn-sketch-outline" onclick="openFormModal('${item.id}')">
+          <i class="fa-solid fa-pen"></i> 編輯
+        </button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -1264,6 +1330,7 @@ function openFormModal(editId = null) {
       document.getElementById('formPeriod').value = target.period;
       document.getElementById('formClassName').value = target.className;
       document.getElementById('formTeacher').value = target.teacher;
+      document.getElementById('formEmail').value = target.teacherEmail || target.email || '';
       document.getElementById('formSubject').value = target.subject;
       document.getElementById('formUnit').value = target.unit;
       document.getElementById('formOpenType').value = target.openType;
@@ -1291,6 +1358,7 @@ function openFormModal(editId = null) {
   } else {
     title.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> 線上登記公開授課 (符合教育局 11 大欄位)`;
     document.getElementById('formEntryId').value = '';
+    document.getElementById('formEmail').value = '';
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     document.getElementById('formDate').value = tomorrow.toISOString().split('T')[0];
@@ -1310,6 +1378,7 @@ function saveOpenClassFromForm(targetStatus) {
     period: document.getElementById('formPeriod').value,
     className: document.getElementById('formClassName').value,
     teacher: document.getElementById('formTeacher').value,
+    teacherEmail: document.getElementById('formEmail').value.trim(),
     subject: document.getElementById('formSubject').value,
     unit: document.getElementById('formUnit').value,
     openType: document.getElementById('formOpenType').value,
@@ -1347,6 +1416,14 @@ function openDetailModal(id) {
   const maxObs = target.maxObservers || 10;
   const available = Math.max(0, maxObs - regCount);
 
+  const observers = target.registeredObservers || [];
+  const nameCounts = {};
+  observers.forEach(o => {
+    const n = (o.name || '').trim();
+    nameCounts[n] = (nameCounts[n] || 0) + 1;
+  });
+  const hasDuplicates = Object.values(nameCounts).some(c => c > 1);
+
   body.innerHTML = `
     <div style="margin-bottom: 1rem;">
       <span class="badge badge-type-${getOpenTypeBadgeClass(target.openType)}" style="font-size: 0.9rem;">${target.openType}公開授課</span>
@@ -1372,41 +1449,203 @@ function openDetailModal(id) {
     </div>
 
     <div style="border-top: 2px dashed var(--ink-border); padding-top: 1rem;">
-      <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-user-plus"></i> 我要線上登記觀課</h4>
-      ${available > 0 ? `
-        <form id="registerObserverForm" onsubmit="handleRegisterObserver(event, '${target.id}')">
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label>觀課教師姓名 <span class="required-star">*</span></label>
-              <input type="text" id="regObsName" class="form-control sketch-input" placeholder="您的姓名" required>
-            </div>
-            <div class="form-group">
-              <label>服務學校 / 單位 <span class="required-star">*</span></label>
-              <input type="text" id="regObsSchool" class="form-control sketch-input" value="本校" required>
-            </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 8px;">
+        <h4 style="margin: 0;"><i class="fa-solid fa-users"></i> 觀課報名名冊 (${regCount}/${maxObs} 人)</h4>
+        ${store.currentPortal === 'backend' ? `
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            ${hasDuplicates ? `
+              <button type="button" class="btn btn-sm btn-sketch-danger" onclick="adminRemoveDuplicateObservers('${target.id}')">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> 一鍵清除重複報名
+              </button>
+            ` : ''}
+            <button type="button" class="btn btn-sm btn-sketch-outline" onclick="adminAddObserverPrompt('${target.id}')">
+              <i class="fa-solid fa-user-plus"></i> 手動登記觀課教師
+            </button>
           </div>
-          <button type="submit" class="btn btn-sketch-success w-100"><i class="fa-solid fa-circle-check"></i> 確認登記入席觀課</button>
-        </form>
-      ` : `<div style="background:#fffbeb; color:#b45309; padding:10px; border-radius:6px; border:2px solid var(--ink-border);">⚠️ 本場次觀課人數已額滿。</div>`}
-    </div>
-
-    ${regCount > 0 ? `
-      <div style="margin-top: 1rem; font-size: 0.85rem;">
-        <strong>已成功報名觀課教師：</strong>
-        <ul style="padding-left: 1.25rem; margin-top: 4px; color: var(--text-muted);">
-          ${target.registeredObservers.map(o => `<li>${o.name} (${o.school}) - <small>${o.time}</small></li>`).join('')}
-        </ul>
+        ` : ''}
       </div>
-    ` : ''}
+
+      ${hasDuplicates && store.currentPortal === 'backend' ? `
+        <div style="background: #fff1f2; color: #be123c; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.75rem; border: 1.5px solid #f43f5e;">
+          <i class="fa-solid fa-triangle-exclamation"></i> 系統偵測到有教師重複報名！可點擊上方「一鍵清除重複報名」自動保留首筆，或點擊下方「修改/移除」。
+        </div>
+      ` : ''}
+
+      ${regCount > 0 ? `
+        <div class="table-responsive" style="margin-bottom: 1.25rem;">
+          <table class="table table-bordered sketch-table" style="font-size: 0.88rem; margin: 0; background: white; width: 100%;">
+            <thead>
+              <tr style="background: #f1f5f9;">
+                <th style="width: 40px; text-align: center;">#</th>
+                <th>觀課教師</th>
+                <th>服務學校 / 單位</th>
+                <th>登記時間</th>
+                ${store.currentPortal === 'backend' ? `<th style="width: 125px; text-align: center;">教務處操作</th>` : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${observers.map((o, oIdx) => {
+                const isDup = nameCounts[(o.name || '').trim()] > 1;
+                return `
+                  <tr style="${isDup ? 'background: #fff1f2;' : ''}">
+                    <td style="text-align: center;">${oIdx + 1}</td>
+                    <td>
+                      <strong>${o.name}</strong>
+                      ${isDup ? `<span class="badge" style="background: #ef4444; color: white; margin-left: 4px; font-size: 0.72rem; padding: 2px 6px;">重複報名</span>` : ''}
+                    </td>
+                    <td>${o.school || '本校'}</td>
+                    <td><small class="text-muted">${o.time || '-'}</small></td>
+                    ${store.currentPortal === 'backend' ? `
+                      <td style="text-align: center; white-space: nowrap;">
+                        <button type="button" class="btn btn-sm btn-sketch-outline" style="padding: 2px 6px; font-size: 0.75rem;" onclick="adminEditObserver('${target.id}', ${oIdx})">
+                          <i class="fa-solid fa-pen"></i> 修改
+                        </button>
+                        <button type="button" class="btn btn-sm btn-sketch-danger" style="padding: 2px 6px; font-size: 0.75rem;" onclick="adminDeleteObserver('${target.id}', ${oIdx})">
+                          <i class="fa-solid fa-trash"></i> 移除
+                        </button>
+                      </td>
+                    ` : ''}
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : `<p class="text-muted" style="font-size: 0.85rem; margin-bottom: 1rem;">目前尚無教師登記觀課。</p>`}
+
+      ${store.currentPortal !== 'backend' ? `
+        <div style="border-top: 1.5px dashed var(--ink-border); padding-top: 0.75rem;">
+          <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-user-plus"></i> 我要線上登記觀課</h4>
+          ${available > 0 ? `
+            <form id="registerObserverForm" onsubmit="handleRegisterObserver(event, '${target.id}')">
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label>觀課教師姓名 <span class="required-star">*</span></label>
+                  <input type="text" id="regObsName" class="form-control sketch-input" placeholder="您的姓名" required>
+                </div>
+                <div class="form-group">
+                  <label>服務學校 / 單位 <span class="required-star">*</span></label>
+                  <input type="text" id="regObsSchool" class="form-control sketch-input" value="本校" required>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-sketch-success w-100"><i class="fa-solid fa-circle-check"></i> 確認登記入席觀課</button>
+            </form>
+          ` : `<div style="background:#fffbeb; color:#b45309; padding:10px; border-radius:6px; border:2px solid var(--ink-border);">⚠️ 本場次觀課人數已額滿。</div>`}
+        </div>
+      ` : ''}
+    </div>
   `;
 
   modal.classList.add('active');
 }
 
+// 教務處觀課名單操作函式
+function adminEditObserver(classId, index) {
+  const target = store.getAll().find(i => i.id === classId);
+  if (!target || !target.registeredObservers || !target.registeredObservers[index]) return;
+
+  const current = target.registeredObservers[index];
+  const newName = prompt('請輸入修改後的觀課教師姓名：', current.name);
+  if (newName === null || newName.trim() === '') return;
+
+  const newSchool = prompt('請輸入觀課教師服務學校 / 單位：', current.school || '本校');
+  if (newSchool === null) return;
+
+  target.registeredObservers[index].name = newName.trim();
+  target.registeredObservers[index].school = newSchool.trim() || '本校';
+
+  store.updateEntry(classId, { registeredObservers: target.registeredObservers });
+  alert(`✅ 已成功更新觀課教師為：${newName.trim()} (${newSchool.trim() || '本校'})`);
+  openDetailModal(classId);
+  renderCurrentPortal();
+}
+
+function adminDeleteObserver(classId, index) {
+  const target = store.getAll().find(i => i.id === classId);
+  if (!target || !target.registeredObservers || !target.registeredObservers[index]) return;
+
+  const targetObs = target.registeredObservers[index];
+  if (!confirm(`確定要將【${targetObs.name} (${targetObs.school || '本校'})】自觀課名單中移除嗎？`)) {
+    return;
+  }
+
+  target.registeredObservers.splice(index, 1);
+  store.updateEntry(classId, { registeredObservers: target.registeredObservers });
+  alert(`✅ 已成功移除該筆觀課登記！`);
+  openDetailModal(classId);
+  renderCurrentPortal();
+}
+
+function adminRemoveDuplicateObservers(classId) {
+  const target = store.getAll().find(i => i.id === classId);
+  if (!target || !target.registeredObservers) return;
+
+  const originalCount = target.registeredObservers.length;
+  const seen = new Set();
+  const deduplicated = [];
+
+  target.registeredObservers.forEach(o => {
+    const key = (o.name || '').trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduplicated.push(o);
+    }
+  });
+
+  const removedCount = originalCount - deduplicated.length;
+  if (removedCount === 0) {
+    return alert('目前觀課名單中沒有重複的教師姓名！');
+  }
+
+  if (!confirm(`系統偵測到 ${removedCount} 筆重複報名紀錄，確定要一鍵清除並自動保留首筆報名嗎？`)) {
+    return;
+  }
+
+  target.registeredObservers = deduplicated;
+  store.updateEntry(classId, { registeredObservers: deduplicated });
+  alert(`🎉 已成功清除 ${removedCount} 筆重複報名！目前觀課名單共 ${deduplicated.length} 位教師。`);
+  openDetailModal(classId);
+  renderCurrentPortal();
+}
+
+function adminAddObserverPrompt(classId) {
+  const target = store.getAll().find(i => i.id === classId);
+  if (!target) return;
+
+  const name = prompt('請輸入欲登記之觀課教師姓名：');
+  if (!name || name.trim() === '') return;
+
+  const school = prompt('請輸入觀課教師服務學校 / 單位：', '本校');
+  if (school === null) return;
+
+  const now = new Date();
+  const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  store.registerObserver(classId, {
+    name: name.trim(),
+    school: school.trim() || '本校',
+    time: `${timeStr} (教務處登記)`
+  });
+
+  alert(`✅ 已成功為【${name.trim()} 老師】登記入席！`);
+  openDetailModal(classId);
+  renderCurrentPortal();
+}
+
 function handleRegisterObserver(e, id) {
   e.preventDefault();
-  const name = document.getElementById('regObsName').value;
-  const school = document.getElementById('regObsSchool').value;
+  const name = document.getElementById('regObsName').value.trim();
+  const school = document.getElementById('regObsSchool').value.trim();
+
+  const target = store.getAll().find(i => i.id === id);
+  if (target && target.registeredObservers) {
+    const isExisting = target.registeredObservers.some(o => (o.name || '').trim() === name);
+    if (isExisting) {
+      if (!confirm(`⚠️ 提醒：名單中已存在【${name} 老師】的報名紀錄！\n\n請問確定仍要再次重複登記送出嗎？`)) {
+        return;
+      }
+    }
+  }
 
   const now = new Date();
   const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
