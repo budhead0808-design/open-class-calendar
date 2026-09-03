@@ -16,7 +16,11 @@ class DataStore {
     this.adminSubView = 'dashboard';
     this.currentDate = new Date();
 
-    this.gasApiUrl = localStorage.getItem(this.storageGasUrlKey) || '';
+    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbw3PWExAU3_-6qC4EEW9dJWgQdVehqlr3Y2Qt3kpEtt97Nb211TkycRj1dfIB0K6B7W/exec';
+    const storedGasUrl = localStorage.getItem(this.storageGasUrlKey);
+    this.gasApiUrl = (storedGasUrl && storedGasUrl.startsWith('http')) ? storedGasUrl : DEFAULT_GAS_URL;
+    localStorage.setItem(this.storageGasUrlKey, this.gasApiUrl);
+
     this.openClasses = this.loadData();
     this.settings = this.loadSettings();
     this.triggerDailySnapshot();
@@ -266,10 +270,14 @@ class DataStore {
       const json = await res.json();
 
       if (json && json.status === 'success') {
-        if (Array.isArray(json.openClasses)) {
+        if (Array.isArray(json.openClasses) && json.openClasses.length > 0) {
           this.openClasses = json.openClasses;
           localStorage.setItem(this.storageDataKey, JSON.stringify(this.openClasses));
+        } else if (Array.isArray(json.openClasses) && json.openClasses.length === 0 && this.openClasses.length > 0) {
+          // 若雲端試算表剛建立還是空的，自動將現有資料同步初始化至雲端試算表！
+          this.pushToCloud('syncAll', null, { openClasses: this.openClasses, settings: this.settings });
         }
+
         if (json.settings && json.settings.siteTitle) {
           this.settings = { ...this.settings, ...json.settings };
           localStorage.setItem(this.storageSettingsKey, JSON.stringify(this.settings));
