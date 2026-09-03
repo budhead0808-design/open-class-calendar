@@ -481,13 +481,21 @@
             <i class="fa-solid fa-circle-info"></i> 標記 <span class="required-star">*</span> 為必填；其餘建議填列事項可點擊下方按鈕展開填寫。
           </div>
 
-          <!-- 必填核心欄位 (適合手機單欄自適應) -->
-          <div class="form-grid-2">
-            <div class="form-group">
+          <!-- 頂部核心：公開授課日期與送出送審按鈕並列（免往下滑，直接送出） -->
+          <div class="date-submit-bar" style="display: flex; gap: 0.65rem; align-items: flex-end; margin-bottom: 1rem;">
+            <div class="form-group date-col" style="flex: 1; margin-bottom: 0;">
               <label for="formDate">公開授課日期 <span class="required-star">*</span></label>
               <input type="date" id="formDate" class="form-control sketch-input" required>
             </div>
 
+            <div class="submit-col" style="flex-shrink: 0;">
+              <button type="submit" class="btn btn-sketch-primary top-submit-btn" id="submitToAdminBtnTop" style="height: 44px; padding: 0 16px; font-size: 0.95rem; font-weight: 900; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 2px 2px 0 var(--ink-border);">
+                <i class="fa-solid fa-paper-plane"></i> 送出送審
+              </button>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
             <div class="form-group">
               <label for="formPeriod">授課節次 <span class="required-star">*</span></label>
               <select id="formPeriod" class="form-select sketch-input" required>
@@ -500,14 +508,14 @@
                 <option value="第 7 節">第 7 節 (15:20 - 16:05)</option>
               </select>
             </div>
-          </div>
 
-          <div class="form-grid-3">
             <div class="form-group">
               <label for="formClassName">班級 <span class="required-star">*</span></label>
               <input type="text" id="formClassName" class="form-control sketch-input" placeholder="例如：302" required>
             </div>
+          </div>
 
+          <div class="form-grid-2">
             <div class="form-group">
               <label for="formTeacher">公開課堂授課教師 <span class="required-star">*</span></label>
               <input type="text" id="formTeacher" class="form-control sketch-input" placeholder="教師姓名" required>

@@ -696,6 +696,31 @@ body {
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 
+/* 頂部日期與送出按鈕列 */
+.date-submit-bar {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+.date-submit-bar .date-col {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.date-submit-bar .top-submit-btn {
+  height: 44px;
+  padding: 0 16px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 2.5px 2.5px 0 var(--ink-border);
+}
+
 .form-section-divider { border-bottom: 2px dashed var(--ink-border); line-height: 0.1em; margin: 1.5rem 0 1rem 0; text-align: center; }
 .form-section-divider span { background: white; padding: 0 10px; font-size: 0.82rem; color: var(--text-muted); font-weight: 900; }
 
@@ -808,7 +833,28 @@ body {
     padding: 0.95rem 0.85rem 1.5rem 0.85rem;
   }
 
-  /* 表單在手機上一律改為單欄排列，不擠壓、好填寫 */
+  /* 頂部日期與送出按鈕在手機上保持並列，高度對齊 */
+  .date-submit-bar {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0.5rem;
+    align-items: flex-end;
+    margin-bottom: 0.85rem;
+  }
+
+  .date-submit-bar .date-col {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .date-submit-bar .top-submit-btn {
+    height: 44px;
+    padding: 0 12px;
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  /* 表單其餘欄位在手機上一律改為單欄排列，不擠壓、好填寫 */
   .form-grid-2, .form-grid-3 {
     grid-template-columns: 1fr !important;
     gap: 0.65rem;
