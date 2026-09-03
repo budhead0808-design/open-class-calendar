@@ -28,6 +28,11 @@ class DataStore {
         try {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
+            const hasLuo = parsed.some(item => item.teacher && item.teacher.includes('羅任鎗'));
+            if (!hasLuo) {
+              const luoEntry = DEFAULT_OPEN_CLASSES.find(i => i.teacher === '羅任鎗');
+              if (luoEntry) parsed.push(luoEntry);
+            }
             this.saveData(parsed);
             return parsed;
           }
@@ -45,26 +50,31 @@ class DataStore {
   }
 
   loadSettings() {
+    const fixedTitle = "115學年度新北市中山國民小學公開授課行事曆";
+    const fixedSubtitle = "115學年度教師公開授課與觀課報名網";
+
     const keysToTry = ['OPEN_CLASS_SETTINGS_V2', 'OPEN_CLASS_SETTINGS_V1'];
+    let savedPass = 'admin';
+
     for (const key of keysToTry) {
       const raw = localStorage.getItem(key);
       if (raw) {
         try {
           const parsed = JSON.parse(raw);
-          if (parsed && parsed.siteTitle) {
-            this.saveSettings(parsed);
-            return parsed;
+          if (parsed && parsed.adminPassword) {
+            savedPass = parsed.adminPassword;
           }
         } catch (e) { console.error('Settings migration error', e); }
       }
     }
-    const defaultSettings = {
-      siteTitle: "新北市 OO 國民小學 114 學年度公開授課行事曆",
-      siteSubtitle: "114 學年度教師公開授課與觀課報名網",
-      adminPassword: "admin"
+
+    const lockedSettings = {
+      siteTitle: fixedTitle,
+      siteSubtitle: fixedSubtitle,
+      adminPassword: savedPass
     };
-    this.saveSettings(defaultSettings);
-    return defaultSettings;
+    this.saveSettings(lockedSettings);
+    return lockedSettings;
   }
 
   saveSettings(newSettings = this.settings) {
@@ -200,7 +210,7 @@ function applySystemSettings() {
   const printReportTitle = document.getElementById('printReportTitle');
 
   if (displayTitle) displayTitle.textContent = siteTitle;
-  if (displaySubtitle) displaySubtitle.textContent = siteSubtitle || "114 學年度教師公開授課與觀課報名網";
+  if (displaySubtitle) displaySubtitle.textContent = siteSubtitle || "115學年度教師公開授課與觀課報名網";
   if (displayAdminTitle) displayAdminTitle.textContent = `${siteTitle} - 教務處管理後台`;
   if (printReportTitle) printReportTitle.textContent = `${siteTitle} 彙整表`;
 
@@ -873,12 +883,47 @@ function initModals() {
   document.getElementById('saveDraftBtn').addEventListener('click', () => {
     saveOpenClassFromForm('草稿');
   });
+
+  // 建議填列欄位展開/收合控制
+  const toggleBtn = document.getElementById('toggleOptionalFieldsBtn');
+  const collapseBtn = document.getElementById('collapseOptionalBtn');
+  const optionalSection = document.getElementById('optionalFieldsSection');
+  const optionalBtnText = document.getElementById('optionalBtnText');
+
+  if (toggleBtn && optionalSection) {
+    toggleBtn.addEventListener('click', () => {
+      const isHidden = optionalSection.classList.contains('hidden');
+      if (isHidden) {
+        optionalSection.classList.remove('hidden');
+        if (optionalBtnText) {
+          optionalBtnText.innerHTML = `<i class="fa-solid fa-chevron-up"></i> 點此收合建議填列事項`;
+        }
+        optionalSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        optionalSection.classList.add('hidden');
+        if (optionalBtnText) {
+          optionalBtnText.innerHTML = `<i class="fa-solid fa-layer-group"></i> ＋ 點此填寫建議事項（備課/議課主持、共備名單、席次與教案連結）`;
+        }
+      }
+    });
+  }
+
+  if (collapseBtn && optionalSection) {
+    collapseBtn.addEventListener('click', () => {
+      optionalSection.classList.add('hidden');
+      if (optionalBtnText) {
+        optionalBtnText.innerHTML = `<i class="fa-solid fa-layer-group"></i> ＋ 點此填寫建議事項（備課/議課主持、共備名單、席次與教案連結）`;
+      }
+    });
+  }
 }
 
 function openFormModal(editId = null) {
   const modal = document.getElementById('openClassModal');
   const title = document.getElementById('modalFormTitle');
   const form = document.getElementById('openClassForm');
+  const optionalSection = document.getElementById('optionalFieldsSection');
+  const optionalBtnText = document.getElementById('optionalBtnText');
   form.reset();
 
   if (editId) {
@@ -901,6 +946,18 @@ function openFormModal(editId = null) {
       document.getElementById('formMaxObservers').value = target.maxObservers || 10;
       document.getElementById('formLessonPlanUrl').value = target.lessonPlanUrl || '';
       document.getElementById('formNotes').value = target.notes || '';
+
+      // 若編輯既有資料且已填寫過建議事項，自動展開方便檢視修改
+      const hasOptional = !!(target.prepHost || target.postPrepHost || target.coPrepGroup || target.observationGroup || target.lessonPlanUrl || target.notes);
+      if (optionalSection) {
+        if (hasOptional) {
+          optionalSection.classList.remove('hidden');
+          if (optionalBtnText) optionalBtnText.innerHTML = `<i class="fa-solid fa-chevron-up"></i> 點此收合建議填列事項`;
+        } else {
+          optionalSection.classList.add('hidden');
+          if (optionalBtnText) optionalBtnText.innerHTML = `<i class="fa-solid fa-layer-group"></i> ＋ 點此填寫建議事項（備課/議課主持、共備名單、席次與教案連結）`;
+        }
+      }
     }
   } else {
     title.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> 線上登記公開授課 (符合教育局 11 大欄位)`;
@@ -908,6 +965,10 @@ function openFormModal(editId = null) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     document.getElementById('formDate').value = tomorrow.toISOString().split('T')[0];
+
+    // 新增時預設收合建議填列事項，維持畫面清爽適合手機
+    if (optionalSection) optionalSection.classList.add('hidden');
+    if (optionalBtnText) optionalBtnText.innerHTML = `<i class="fa-solid fa-layer-group"></i> ＋ 點此填寫建議事項（備課/議課主持、共備名單、席次與教案連結）`;
   }
 
   modal.classList.add('active');

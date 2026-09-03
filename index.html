@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>公開授課行事曆與教務彙整系統 | 114學年度</title>
-  <meta name="description" content="提供教師線上填寫公開授課時間、內容，教務處審核彙整與一鍵公告發布，符合教育局規定格式之公開授課管理網站。">
+  <title>115學年度新北市中山國民小學公開授課行事曆</title>
+  <meta name="description" content="115學年度新北市中山國民小學公開授課行事曆，提供教師線上填寫公開授課時間、單元內容，教務處審核彙整與公告發布。">
   <!-- Google Fonts: 溫暖手繪與圓體字型 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,8 +25,8 @@
           <i class="fa-solid fa-paintbrush"></i>
         </div>
         <div class="brand-text">
-          <h1 id="displaySiteTitle">公開授課行事曆</h1>
-          <p class="brand-subtitle" id="displaySiteSubtitle">114 學年度教師公開授課與觀課報名網</p>
+          <h1 id="displaySiteTitle">115學年度新北市中山國民小學公開授課行事曆</h1>
+          <p class="brand-subtitle" id="displaySiteSubtitle">115學年度教師公開授課與觀課報名網</p>
         </div>
       </div>
 
@@ -55,7 +55,7 @@
           <i class="fa-solid fa-building-columns"></i>
         </div>
         <div class="brand-text">
-          <h1 id="displayAdminSiteTitle">教務處 - 公開授課管理後台</h1>
+          <h1 id="displayAdminSiteTitle">115學年度新北市中山國民小學公開授課行事曆 - 教務處管理後台</h1>
           <p class="brand-subtitle">全校公開授課審核、彙整與教育局報表管理</p>
         </div>
       </div>
@@ -79,7 +79,7 @@
     <div class="notice-container">
       <div class="notice-icon"><i class="fa-solid fa-bullhorn"></i></div>
       <div class="notice-content">
-        <strong>觀課溫馨提醒：</strong> 歡迎同校及各校教師登記參與公開授課。授課完畢請於 2 星期內繳交教學觀察紀錄表。
+        <strong>觀課溫馨提醒：</strong> 歡迎新北市中山國民小學同校及各校教師登記參與公開授課。授課完畢請於 2 星期內繳交教學觀察紀錄表。
       </div>
       <button class="notice-close" onclick="this.parentElement.parentElement.style.display='none'">&times;</button>
     </div>
@@ -347,12 +347,12 @@
               
               <div class="form-group">
                 <label for="settingSiteTitle">網站主標題 (顯示於網站頂部與瀏覽器頁籤)</label>
-                <input type="text" id="settingSiteTitle" class="form-control sketch-input" placeholder="例如：新北市 OO 國民小學 114 學年度公開授課行事曆" required>
+                <input type="text" id="settingSiteTitle" class="form-control sketch-input" placeholder="例如：115學年度新北市中山國民小學公開授課行事曆" required>
               </div>
 
               <div class="form-group">
                 <label for="settingSiteSubtitle">網站副標題</label>
-                <input type="text" id="settingSiteSubtitle" class="form-control sketch-input" placeholder="例如：114 學年度教師公開授課與觀課報名網">
+                <input type="text" id="settingSiteSubtitle" class="form-control sketch-input" placeholder="例如：115學年度教師公開授課與觀課報名網">
               </div>
             </div>
 
@@ -468,19 +468,20 @@
   <!-- Modal 2: 教師登記/編輯公開授課 (11大欄位) -->
   <div class="modal-backdrop" id="openClassModal">
     <div class="modal-dialog modal-lg sketch-card">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 id="modalFormTitle"><i class="fa-solid fa-pen-to-square"></i> 線上登記公開授課 (符合教育局 11 大欄位)</h3>
-          <button class="modal-close" id="closeFormModalBtn">&times;</button>
-        </div>
+      <div class="modal-header">
+        <h3 id="modalFormTitle"><i class="fa-solid fa-pen-to-square"></i> 線上登記公開授課 (符合教育局 11 大欄位)</h3>
+        <button class="modal-close" id="closeFormModalBtn">&times;</button>
+      </div>
 
-        <form id="openClassForm" class="modal-body">
+      <form id="openClassForm" class="modal-form-wrapper">
+        <div class="modal-body">
           <input type="hidden" id="formEntryId">
 
           <div class="form-tip-box sketch-card">
-            <i class="fa-solid fa-circle-info"></i> 標記 <span class="required-star">*</span> 者為教育局規定必填欄位；其餘欄位為建議填列欄位。
+            <i class="fa-solid fa-circle-info"></i> 標記 <span class="required-star">*</span> 為必填；其餘建議填列事項可點擊下方按鈕展開填寫。
           </div>
 
+          <!-- 必填核心欄位 (適合手機單欄自適應) -->
           <div class="form-grid-2">
             <div class="form-group">
               <label for="formDate">公開授課日期 <span class="required-star">*</span></label>
@@ -551,62 +552,73 @@
             </div>
           </div>
 
-          <!-- 建議填列欄位 -->
-          <div class="form-section-divider">
-            <span>建議填列欄位 (備課與議課人員安排)</span>
-          </div>
-
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="formPrepHost">備課主持人 (建議)</label>
-              <input type="text" id="formPrepHost" class="form-control sketch-input" placeholder="例如：張美珍 老師 (召集人)">
-            </div>
-
-            <div class="form-group">
-              <label for="formPostPrepHost">議課主持人 (建議)</label>
-              <input type="text" id="formPostPrepHost" class="form-control sketch-input" placeholder="例如：陳文雄 校長">
-            </div>
-          </div>
-
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="formCoPrepGroup">共同備課教師類群 / 名單 (建議)</label>
-              <textarea id="formCoPrepGroup" class="form-control sketch-input" rows="2" placeholder="例如：自然與資訊領域全體教師"></textarea>
-            </div>
-
-            <div class="form-group">
-              <label for="formObservationGroup">觀課議課教師類群 / 名單 (建議)</label>
-              <textarea id="formObservationGroup" class="form-control sketch-input" rows="2" placeholder="例如：校內全體教師、本市報名教師"></textarea>
-            </div>
-          </div>
-
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="formMaxObservers">開放線上報名席次</label>
-              <input type="number" id="formMaxObservers" class="form-control sketch-input" value="10" min="1" max="50">
-            </div>
-
-            <div class="form-group">
-              <label for="formLessonPlanUrl">教案 / 共備紀錄雲端連結</label>
-              <input type="url" id="formLessonPlanUrl" class="form-control sketch-input" placeholder="https://drive.google.com/...">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="formNotes">補充說明與備註</label>
-            <input type="text" id="formNotes" class="form-control sketch-input" placeholder="例如：會後於二樓會議室進行議課。">
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn btn-sketch-outline" id="saveDraftBtn">
-              <i class="fa-solid fa-floppy-disk"></i> 儲存為草稿
-            </button>
-            <button type="submit" class="btn btn-sketch-primary" id="submitToAdminBtn">
-              <i class="fa-solid fa-paper-plane"></i> 送出送審 (教務處)
+          <!-- 建議填列事項展開按鈕 (依需求點擊展開，手機版面清爽好滑) -->
+          <div class="optional-toggle-wrapper" style="margin: 1.25rem 0 0.5rem 0;">
+            <button type="button" class="btn btn-sketch-secondary w-100" id="toggleOptionalFieldsBtn">
+              <span id="optionalBtnText"><i class="fa-solid fa-layer-group"></i> ＋ 點此填寫建議事項（備課/議課主持、共備名單、席次與教案連結）</span>
             </button>
           </div>
-        </form>
-      </div>
+
+          <!-- 建議填列欄位區塊 (預設收合，有需要再點擊展開) -->
+          <div id="optionalFieldsSection" class="optional-fields-box sketch-card hidden" style="background: #fdfbf7; padding: 1.1rem; margin-top: 0.75rem; border-radius: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; border-bottom: 2px dashed var(--ink-border); padding-bottom: 0.5rem;">
+              <h4 style="font-size: 0.95rem; font-weight: 900; color: var(--primary);"><i class="fa-solid fa-list-check"></i> 建議填列事項 (有需要再填寫)</h4>
+              <button type="button" class="btn btn-sm btn-sketch-outline" id="collapseOptionalBtn"><i class="fa-solid fa-chevron-up"></i> 收合</button>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="formPrepHost">備課主持人 (建議)</label>
+                <input type="text" id="formPrepHost" class="form-control sketch-input" placeholder="例如：張美珍 老師 (召集人)">
+              </div>
+
+              <div class="form-group">
+                <label for="formPostPrepHost">議課主持人 (建議)</label>
+                <input type="text" id="formPostPrepHost" class="form-control sketch-input" placeholder="例如：陳文雄 校長">
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="formCoPrepGroup">共同備課教師類群 / 名單 (建議)</label>
+                <textarea id="formCoPrepGroup" class="form-control sketch-input" rows="2" placeholder="例如：自然與資訊領域全體教師"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="formObservationGroup">觀課議課教師類群 / 名單 (建議)</label>
+                <textarea id="formObservationGroup" class="form-control sketch-input" rows="2" placeholder="例如：校內全體教師、本市報名教師"></textarea>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="formMaxObservers">開放線上報名席次</label>
+                <input type="number" id="formMaxObservers" class="form-control sketch-input" value="10" min="1" max="50">
+              </div>
+
+              <div class="form-group">
+                <label for="formLessonPlanUrl">教案 / 共備紀錄雲端連結</label>
+                <input type="url" id="formLessonPlanUrl" class="form-control sketch-input" placeholder="https://drive.google.com/...">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0.25rem;">
+              <label for="formNotes">補充說明與備註</label>
+              <input type="text" id="formNotes" class="form-control sketch-input" placeholder="例如：會後於二樓會議室進行議課。">
+            </div>
+          </div>
+        </div>
+
+        <!-- 模態框底部送出按鈕：獨立常駐，手機版永遠看得到送出與草稿按鈕 -->
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sketch-outline" id="saveDraftBtn">
+            <i class="fa-solid fa-floppy-disk"></i> 儲存草稿
+          </button>
+          <button type="submit" class="btn btn-sketch-primary" id="submitToAdminBtn">
+            <i class="fa-solid fa-paper-plane"></i> 送出送審 (教務處)
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -629,7 +641,7 @@
   <!-- A4 橫式列印標準教育局報表 (Print Section) -->
   <div id="bureauPrintSection" class="print-only-container">
     <div class="print-header">
-      <h2 id="printReportTitle">114 學年度公開授課行事曆</h2>
+      <h2 id="printReportTitle">115學年度新北市中山國民小學公開授課行事曆</h2>
       <p class="print-meta">產出日期：<span id="printDateString">2026-08-15</span> | 彙整單位：教務處</p>
     </div>
 
