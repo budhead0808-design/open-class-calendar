@@ -11,13 +11,21 @@ class DataStore {
     this.storageDataKey = 'OPEN_CLASS_CALENDAR_DATA_V3';
     this.storageSettingsKey = 'OPEN_CLASS_SETTINGS_V2';
     this.storageSnapshotsKey = 'OPEN_CLASS_DAILY_SNAPSHOTS_V1';
+    this.storageGasUrlKey = 'OPEN_CLASS_GAS_URL';
     this.currentPortal = 'frontend'; // 'frontend' | 'backend'
     this.adminSubView = 'dashboard';
     this.currentDate = new Date();
 
+    this.gasApiUrl = localStorage.getItem(this.storageGasUrlKey) || '';
     this.openClasses = this.loadData();
     this.settings = this.loadSettings();
     this.triggerDailySnapshot();
+    
+    // 初始化完成後自動與雲端試算表同步
+    setTimeout(() => {
+      this.updateCloudStatusBadge();
+      if (this.gasApiUrl) this.syncFromCloud();
+    }, 100);
   }
 
   loadData() {
@@ -161,6 +169,7 @@ class DataStore {
     };
     this.openClasses.push(newRecord);
     this.saveData();
+    this.pushToCloud('addOpenClass', newRecord);
     return newRecord;
   }
 
@@ -169,6 +178,7 @@ class DataStore {
     if (idx !== -1) {
       this.openClasses[idx] = { ...this.openClasses[idx], ...updatedFields };
       this.saveData();
+      this.pushToCloud('updateOpenClass', updatedFields, { id: id });
     }
   }
 
@@ -178,6 +188,7 @@ class DataStore {
       if (!target.registeredObservers) target.registeredObservers = [];
       target.registeredObservers.push(observerData);
       this.saveData();
+      this.pushToCloud('registerObserver', null, { id: id, observer: observerData });
     }
   }
 
@@ -186,6 +197,111 @@ class DataStore {
       if (ids.includes(item.id)) item.status = newStatus;
     });
     this.saveData();
+    this.pushToCloud('batchUpdateStatus', null, { ids: ids, status: newStatus });
+  }
+
+  setGasUrl(url) {
+    this.gasApiUrl = (url || '').trim();
+    localStorage.setItem(this.storageGasUrlKey, this.gasApiUrl);
+    this.updateCloudStatusBadge();
+  }
+
+  updateCloudStatusBadge(state = null, text = null) {
+    const badge = document.getElementById('cloudStatusBadge');
+    const badgeText = document.getElementById('cloudStatusText');
+    const connBadge = document.getElementById('cloudConnBadge');
+
+    let currentText = text;
+    let iconClass = 'fa-solid fa-cloud';
+    let bg = '#f1f5f9';
+    let color = '#64748b';
+
+    if (state === 'syncing') {
+      currentText = text || '雲端同步中...';
+      iconClass = 'fa-solid fa-arrows-rotate fa-spin';
+      bg = '#fef9c3';
+      color = '#854d0e';
+    } else if (this.gasApiUrl) {
+      currentText = text || '雲端同步已連線';
+      iconClass = 'fa-solid fa-cloud-arrow-up';
+      bg = '#dcfce7';
+      color = '#15803d';
+    } else {
+      currentText = '本機離線模式';
+      iconClass = 'fa-solid fa-cloud';
+      bg = '#f1f5f9';
+      color = '#64748b';
+    }
+
+    if (badge) {
+      badge.style.background = bg;
+      badge.style.color = color;
+      badge.innerHTML = `<i class="${iconClass}"></i> <span id="cloudStatusText">${currentText}</span>`;
+    }
+
+    if (connBadge) {
+      if (this.gasApiUrl) {
+        connBadge.className = 'badge badge-approved';
+        connBadge.style.background = '#dcfce7';
+        connBadge.style.color = '#15803d';
+        connBadge.textContent = '🟢 已連線至 Google 試算表';
+      } else {
+        connBadge.className = 'badge';
+        connBadge.style.background = '#e2e8f0';
+        connBadge.style.color = '#475569';
+        connBadge.textContent = '未連線 (本機模式)';
+      }
+    }
+  }
+
+  async syncFromCloud() {
+    if (!this.gasApiUrl) {
+      this.updateCloudStatusBadge();
+      return false;
+    }
+
+    try {
+      this.updateCloudStatusBadge('syncing', '從雲端載入中...');
+      const res = await fetch(this.gasApiUrl, { cache: 'no-store' });
+      const json = await res.json();
+
+      if (json && json.status === 'success') {
+        if (Array.isArray(json.openClasses)) {
+          this.openClasses = json.openClasses;
+          localStorage.setItem(this.storageDataKey, JSON.stringify(this.openClasses));
+        }
+        if (json.settings && json.settings.siteTitle) {
+          this.settings = { ...this.settings, ...json.settings };
+          localStorage.setItem(this.storageSettingsKey, JSON.stringify(this.settings));
+        }
+        this.updateCloudStatusBadge();
+        applySystemSettings();
+        renderCurrentPortal();
+        return true;
+      }
+    } catch (err) {
+      console.warn('Cloud sync error, fallback to local storage:', err);
+      this.updateCloudStatusBadge('error', '雲端連線失敗 (使用本機快取)');
+    }
+    return false;
+  }
+
+  async pushToCloud(action, data, extra = {}) {
+    if (!this.gasApiUrl) return;
+
+    try {
+      this.updateCloudStatusBadge('syncing', '正在同步至雲端...');
+      const payload = { action, data, ...extra };
+      await fetch(this.gasApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      this.updateCloudStatusBadge();
+    } catch (err) {
+      console.error('Push to cloud error:', err);
+      this.updateCloudStatusBadge('error', '雲端同步異常');
+    }
   }
 }
 
@@ -319,6 +435,7 @@ function initPortalSwitcher() {
       store.settings.adminPassword = newPass;
       store.saveSettings();
       try { localStorage.removeItem('OPEN_CLASS_SETTINGS_V1'); } catch (err) {}
+      store.pushToCloud('updatePassword', null, { password: newPass });
 
       alert(`✅ 教務處管理密碼已成功變更！\n新密碼為：${newPass}\n下次登入請使用新密碼。`);
       changePasswordModal.classList.remove('active');
@@ -509,6 +626,81 @@ function initBackendTabs() {
 function initSettingsForm() {
   const form = document.getElementById('systemSettingsForm');
   if (!form) return;
+
+  // Google 試算表雲端同步設定
+  const gasInput = document.getElementById('settingGasUrl');
+  if (gasInput) {
+    gasInput.value = store.gasApiUrl;
+  }
+
+  const testCloudBtn = document.getElementById('testCloudConnBtn');
+  if (testCloudBtn) {
+    testCloudBtn.addEventListener('click', async () => {
+      const url = gasInput ? gasInput.value.trim() : '';
+      if (!url) {
+        return alert('請先填入 Google Apps Script 網頁應用程式網址！');
+      }
+      store.setGasUrl(url);
+      testCloudBtn.disabled = true;
+      testCloudBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 連線測試中...`;
+
+      const success = await store.syncFromCloud();
+      testCloudBtn.disabled = false;
+      testCloudBtn.innerHTML = `<i class="fa-solid fa-link"></i> 連線測試並載入雲端資料`;
+
+      if (success) {
+        alert('🎉 連線成功！已成功從 Google 試算表載入最新全校公開授課資料與密碼設定！');
+      } else {
+        alert('⚠️ 連線測試失敗，請確認：\n1. Google Apps Script 部署作業是否已設為「任何人 (Anyone)」皆可存取。\n2. 網址結尾是否為 /exec。');
+      }
+    });
+  }
+
+  const uploadAllBtn = document.getElementById('uploadAllToCloudBtn');
+  if (uploadAllBtn) {
+    uploadAllBtn.addEventListener('click', async () => {
+      const url = gasInput ? gasInput.value.trim() : '';
+      if (!url) {
+        return alert('請先填入 Google Apps Script 網頁應用程式網址！');
+      }
+      store.setGasUrl(url);
+
+      if (!confirm(`確定要將目前的 ${store.openClasses.length} 筆公開授課與學校設定全數上傳初始化至 Google 試算表嗎？`)) {
+        return;
+      }
+
+      uploadAllBtn.disabled = true;
+      uploadAllBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 上傳中...`;
+      try {
+        await store.pushToCloud('syncAll', null, { openClasses: store.openClasses, settings: store.settings });
+        uploadAllBtn.disabled = false;
+        uploadAllBtn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> 將目前現有資料上傳至雲端`;
+        alert('🎉 資料已全數成功上傳至 Google 試算表！\n請打開您的 Google 試算表檢查，現在全校所有電腦與手機都已即時連線！');
+      } catch (err) {
+        uploadAllBtn.disabled = false;
+        uploadAllBtn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> 將目前現有資料上傳至雲端`;
+        alert('上傳失敗：' + err.message);
+      }
+    });
+  }
+
+  const copyGasBtn = document.getElementById('copyGasCodeBtn');
+  if (copyGasBtn) {
+    copyGasBtn.addEventListener('click', () => {
+      fetch('google-apps-script.js')
+        .then(res => res.text())
+        .then(code => {
+          navigator.clipboard.writeText(code).then(() => {
+            alert('📋 Google Apps Script 完整程式碼已複製至剪貼簿！\n請前往 Google 試算表「擴充功能」->「Apps Script」貼上並部署即可！');
+          }).catch(() => {
+            alert('複製失敗，請直接在專案資料夾打開 google-apps-script.js 複製。');
+          });
+        })
+        .catch(() => {
+          alert('請直接在專案資料夾打開 google-apps-script.js 複製。');
+        });
+    });
+  }
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
