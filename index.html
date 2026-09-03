@@ -67,6 +67,9 @@
         <button class="btn btn-sketch-outline text-white" id="exportBureauFormatBtn">
           <i class="fa-solid fa-file-export"></i> 匯出教育局報表
         </button>
+        <button class="btn btn-sketch-outline text-white" id="backendChangePassBtn">
+          <i class="fa-solid fa-key"></i> 修改管理密碼
+        </button>
         <button class="btn btn-sketch-danger" id="switchToFrontendBtn">
           <i class="fa-solid fa-arrow-right-from-bracket"></i> 離開後台 (返回前台)
         </button>
@@ -451,17 +454,59 @@
       </div>
       <div class="modal-body">
         <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
-          此專區僅限教務處行政人員使用，預設密碼為 <strong>admin</strong>。
+          此專區僅限教務處行政人員使用（初次預設密碼為 <strong>admin</strong>）。
         </p>
         <div class="form-group">
           <label for="adminPasswordInput">管理者密碼</label>
-          <input type="password" id="adminPasswordInput" class="form-control sketch-input" value="admin" placeholder="請輸入後台密碼">
+          <input type="password" id="adminPasswordInput" class="form-control sketch-input" placeholder="請輸入後台密碼">
+        </div>
+        <div style="text-align: right; margin-top: 0.5rem;">
+          <button type="button" class="btn btn-sm btn-sketch-outline" id="showChangePassFromLoginBtn" style="font-size: 0.82rem;">
+            <i class="fa-solid fa-key"></i> 想修改管理密碼？
+          </button>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-sketch-outline" id="cancelAdminLoginBtn">取消</button>
         <button class="btn btn-sketch-primary" id="confirmAdminLoginBtn"><i class="fa-solid fa-right-to-bracket"></i> 驗證並登入後台</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal 1-B: 獨立專屬 修改管理密碼 Modal -->
+  <div class="modal-backdrop" id="changePasswordModal">
+    <div class="modal-dialog sketch-card" style="max-width: 450px;">
+      <div class="modal-header" style="background: #fed7aa;">
+        <h3><i class="fa-solid fa-key"></i> 修改教務處管理密碼</h3>
+        <button class="modal-close" id="closeChangePassModalBtn">&times;</button>
+      </div>
+      <form id="standaloneChangePassForm" class="modal-body" style="padding: 1.25rem;">
+        <div class="form-tip-box sketch-card" style="margin-bottom: 1rem; background: #fffbeb; color: #b45309;">
+          <i class="fa-solid fa-shield-halved"></i> 請輸入目前密碼以驗證身分，並設定新密碼（至少 3 碼）。
+        </div>
+
+        <div class="form-group">
+          <label for="pwdOldInput">目前舊密碼 <span class="required-star">*</span></label>
+          <input type="password" id="pwdOldInput" class="form-control sketch-input" placeholder="請輸入目前密碼 (初次為 admin)" required>
+        </div>
+
+        <div class="form-group">
+          <label for="pwdNewInput">設定新密碼 <span class="required-star">*</span></label>
+          <input type="password" id="pwdNewInput" class="form-control sketch-input" placeholder="請輸入新密碼 (至少 3 碼)" required>
+        </div>
+
+        <div class="form-group">
+          <label for="pwdConfirmInput">再次確認新密碼 <span class="required-star">*</span></label>
+          <input type="password" id="pwdConfirmInput" class="form-control sketch-input" placeholder="請再次輸入新密碼" required>
+        </div>
+
+        <div class="modal-footer" style="padding: 0.75rem 0 0 0; margin-top: 1rem; border-top: none; background: transparent; box-shadow: none;">
+          <button type="button" class="btn btn-sketch-outline" id="cancelChangePassBtn">取消</button>
+          <button type="submit" class="btn btn-sketch-primary" style="background: #f97316; color: white;">
+            <i class="fa-solid fa-check"></i> 確定變更密碼
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

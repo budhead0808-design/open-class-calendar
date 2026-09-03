@@ -53,18 +53,26 @@ class DataStore {
     const fixedTitle = "115學年度新北市中山國民小學公開授課行事曆";
     const fixedSubtitle = "115學年度教師公開授課與觀課報名網";
 
-    const keysToTry = ['OPEN_CLASS_SETTINGS_V2', 'OPEN_CLASS_SETTINGS_V1'];
     let savedPass = 'admin';
 
-    for (const key of keysToTry) {
-      const raw = localStorage.getItem(key);
-      if (raw) {
+    // 優先讀取已修改的最新密碼 (V2)
+    const rawV2 = localStorage.getItem('OPEN_CLASS_SETTINGS_V2');
+    if (rawV2) {
+      try {
+        const parsed = JSON.parse(rawV2);
+        if (parsed && parsed.adminPassword) {
+          savedPass = parsed.adminPassword;
+        }
+      } catch (e) { console.error('Settings read error', e); }
+    } else {
+      const rawV1 = localStorage.getItem('OPEN_CLASS_SETTINGS_V1');
+      if (rawV1) {
         try {
-          const parsed = JSON.parse(raw);
+          const parsed = JSON.parse(rawV1);
           if (parsed && parsed.adminPassword) {
             savedPass = parsed.adminPassword;
           }
-        } catch (e) { console.error('Settings migration error', e); }
+        } catch (e) {}
       }
     }
 
@@ -234,7 +242,9 @@ function initPortalSwitcher() {
   const adminLoginModal = document.getElementById('adminLoginModal');
 
   switchToBackendBtn.addEventListener('click', () => {
+    document.getElementById('adminPasswordInput').value = '';
     adminLoginModal.classList.add('active');
+    setTimeout(() => document.getElementById('adminPasswordInput').focus(), 150);
   });
 
   document.getElementById('closeAdminLoginModalBtn').addEventListener('click', () => {
@@ -245,7 +255,7 @@ function initPortalSwitcher() {
   });
 
   // 驗證後台密碼 (比對 store.settings.adminPassword)
-  document.getElementById('confirmAdminLoginBtn').addEventListener('click', () => {
+  const doAdminLogin = () => {
     const inputPass = document.getElementById('adminPasswordInput').value;
     const currentPass = store.settings.adminPassword || 'admin';
 
@@ -255,7 +265,65 @@ function initPortalSwitcher() {
     } else {
       alert('密碼錯誤！請重新輸入後台登入密碼。');
     }
+  };
+
+  document.getElementById('confirmAdminLoginBtn').addEventListener('click', doAdminLogin);
+  document.getElementById('adminPasswordInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      doAdminLogin();
+    }
   });
+
+  // 獨立修改密碼彈窗處理
+  const changePasswordModal = document.getElementById('changePasswordModal');
+  const showChangePassFromLoginBtn = document.getElementById('showChangePassFromLoginBtn');
+  const backendChangePassBtn = document.getElementById('backendChangePassBtn');
+  const closeChangePassModalBtn = document.getElementById('closeChangePassModalBtn');
+  const cancelChangePassBtn = document.getElementById('cancelChangePassBtn');
+  const standaloneChangePassForm = document.getElementById('standaloneChangePassForm');
+
+  const openChangePassModal = () => {
+    if (adminLoginModal) adminLoginModal.classList.remove('active');
+    if (standaloneChangePassForm) standaloneChangePassForm.reset();
+    if (changePasswordModal) changePasswordModal.classList.add('active');
+    setTimeout(() => {
+      const oldInput = document.getElementById('pwdOldInput');
+      if (oldInput) oldInput.focus();
+    }, 150);
+  };
+
+  if (showChangePassFromLoginBtn) showChangePassFromLoginBtn.addEventListener('click', openChangePassModal);
+  if (backendChangePassBtn) backendChangePassBtn.addEventListener('click', openChangePassModal);
+  if (closeChangePassModalBtn) closeChangePassModalBtn.addEventListener('click', () => changePasswordModal.classList.remove('active'));
+  if (cancelChangePassBtn) cancelChangePassBtn.addEventListener('click', () => changePasswordModal.classList.remove('active'));
+
+  if (standaloneChangePassForm) {
+    standaloneChangePassForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const oldPass = document.getElementById('pwdOldInput').value;
+      const newPass = document.getElementById('pwdNewInput').value;
+      const confirmPass = document.getElementById('pwdConfirmInput').value;
+      const currentPass = store.settings.adminPassword || 'admin';
+
+      if (oldPass !== currentPass) {
+        return alert('⚠️ 目前舊密碼輸入錯誤，請重新確認！');
+      }
+      if (newPass.length < 3) {
+        return alert('⚠️ 新密碼長度過短，請至少設定 3 個字元！');
+      }
+      if (newPass !== confirmPass) {
+        return alert('⚠️ 兩次輸入的新密碼不相符，請再次檢查！');
+      }
+
+      store.settings.adminPassword = newPass;
+      store.saveSettings();
+      try { localStorage.removeItem('OPEN_CLASS_SETTINGS_V1'); } catch (err) {}
+
+      alert(`✅ 教務處管理密碼已成功變更！\n新密碼為：${newPass}\n下次登入請使用新密碼。`);
+      changePasswordModal.classList.remove('active');
+    });
+  }
 
   switchToFrontendBtn.addEventListener('click', () => {
     setPortal('frontend');
