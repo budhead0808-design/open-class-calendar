@@ -515,6 +515,64 @@ function initFrontendFilters() {
   });
 }
 
+// 日期中文化格式化函式 (去除台北標準時間、GMT 等字眼，一律顯示為 2026年10月5日)
+function formatDateChinese(dateStr) {
+  if (!dateStr) return '';
+  const s = String(dateStr).trim();
+
+  // 若已經是「YYYY年M月D日」格式
+  if (/^\d{4}年\d{1,2}月\d{1,2}日$/.test(s)) {
+    return s;
+  }
+
+  // 嘗試解析常見的 2026-10-05, 2026/10/05
+  const match1 = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (match1) {
+    return `${match1[1]}年${parseInt(match1[2], 10)}月${parseInt(match1[3], 10)}日`;
+  }
+
+  // 嘗試解析 Date 物件或 "Mon Oct 05 2026 ... GMT+0800 (台北標準時間)"
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    return `${y}年${m}月${day}日`;
+  }
+
+  // 正則抓取任意四位年份與其後的月日
+  const match2 = s.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (match2) {
+    return `${match2[1]}年${parseInt(match2[2], 10)}月${parseInt(match2[3], 10)}日`;
+  }
+
+  return s;
+}
+
+// 轉為 input[type=date] 標準的 YYYY-MM-DD
+function normalizeDateIso(dateStr) {
+  if (!dateStr) return '';
+  const s = String(dateStr).trim();
+
+  const match = s.match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+  if (match) {
+    const y = match[1];
+    const m = match[2].padStart(2, '0');
+    const day = match[3].padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  return s;
+}
+
 function renderFrontendPortal() {
   const list = store.getFrontendList({
     search: document.getElementById('frontendSearchInput').value,
@@ -538,7 +596,10 @@ function renderFrontendPortal() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${item.sessionId || idx + 1}</strong></td>
-        <td><div>${item.date}</div><small class="text-muted">${item.period}</small></td>
+        <td>
+          <div style="font-weight: 900; color: var(--primary); font-size: 0.95rem;">${formatDateChinese(item.date)}</div>
+          <small class="text-muted">${item.period}</small>
+        </td>
         <td><span class="badge badge-draft">${item.className} 班</span></td>
         <td><strong>${item.teacher}</strong></td>
         <td><span class="badge badge-approved">${item.subject}</span></td>
@@ -948,7 +1009,7 @@ function renderAdminDashboard() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input type="checkbox" class="admin-pending-check" value="${item.id}"></td>
-      <td><strong>${item.date}</strong><br><small class="text-muted">${item.period}</small></td>
+      <td><strong style="color: var(--primary); font-size: 0.95rem;">${formatDateChinese(item.date)}</strong><br><small class="text-muted">${item.period}</small></td>
       <td>${item.className} 班</td>
       <td><strong>${item.teacher}</strong></td>
       <td><span class="badge badge-approved">${item.subject}</span><br><small>${item.unit}</small></td>
@@ -995,7 +1056,7 @@ function renderAdminMasterTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${item.sessionId || idx + 1}</strong></td>
-      <td><div>${item.date}</div><small class="text-muted">${item.period}</small></td>
+      <td><div style="font-weight: 900; color: var(--primary); font-size: 0.95rem;">${formatDateChinese(item.date)}</div><small class="text-muted">${item.period}</small></td>
       <td>${item.className} 班</td>
       <td><strong>${item.teacher}</strong></td>
       <td><span class="badge badge-approved">${item.subject}</span></td>
@@ -1066,7 +1127,7 @@ function renderAdminMonthCalendar() {
     cell.innerHTML = `<span class="calendar-day-number">${day}</span><div class="day-events-wrapper"></div>`;
 
     const dayWrapper = cell.querySelector('.day-events-wrapper');
-    const dayEvents = events.filter(e => e.date === dateStr);
+    const dayEvents = events.filter(e => normalizeDateIso(e.date) === dateStr);
 
     dayEvents.forEach(evt => {
       const pill = document.createElement('div');
@@ -1199,7 +1260,7 @@ function openFormModal(editId = null) {
     const target = store.getAll().find(i => i.id === editId);
     if (target) {
       document.getElementById('formEntryId').value = target.id;
-      document.getElementById('formDate').value = target.date;
+      document.getElementById('formDate').value = normalizeDateIso(target.date);
       document.getElementById('formPeriod').value = target.period;
       document.getElementById('formClassName').value = target.className;
       document.getElementById('formTeacher').value = target.teacher;
@@ -1295,7 +1356,7 @@ function openDetailModal(id) {
     <h2 style="font-size: 1.3rem; margin-bottom: 1rem; color: var(--primary);">${target.subject} - ${target.unit}</h2>
 
     <div class="form-grid-2 sketch-card" style="background: #fefce8; padding: 1rem; margin-bottom: 1rem;">
-      <div><strong>公開授課日期：</strong> ${target.date} (${target.period})</div>
+      <div><strong>公開授課日期：</strong> <span style="font-weight: 900; color: var(--primary);">${formatDateChinese(target.date)}</span> (${target.period})</div>
       <div><strong>授課教師：</strong> ${target.teacher} (${target.className}班)</div>
       <div><strong>地點：</strong> ${target.location || '原班教室'}</div>
       <div><strong>觀課席次：</strong> 已報名 ${regCount} 人 / 上限 ${maxObs} 人 (剩餘 ${available} 席)</div>
@@ -1380,7 +1441,7 @@ function exportToPrintPDF() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="text-align:center;">${item.sessionId || idx + 1}</td>
-      <td>${item.date}</td>
+      <td>${formatDateChinese(item.date)}</td>
       <td>${item.period}</td>
       <td style="text-align:center;">${item.className}</td>
       <td><strong>${item.teacher}</strong></td>
@@ -1410,7 +1471,7 @@ function exportToCSV() {
   data.forEach((item, idx) => {
     const row = [
       item.sessionId || idx + 1,
-      `"${item.date}"`,
+      `"${formatDateChinese(item.date)}"`,
       `"${item.period}"`,
       `"${item.className}"`,
       `"${item.teacher}"`,
