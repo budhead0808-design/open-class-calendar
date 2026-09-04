@@ -119,14 +119,22 @@ class DataStore {
     const fixedSubtitle = "115學年度教師公開授課與觀課報名網";
 
     let savedPass = 'admin';
+    let docDriveUrl = 'https://drive.google.com';
+    let docDriveTitle = '中山國小教務處雲端硬碟表件專區';
+    let docNoticeText = '新北市政府教育局公開授課表件規範：\n授課教師於公開授課後，請繳交【表一：教學活動設計表】與【表三：教學省思與議課表】至教務處留校備查；觀課教師請繳交【表二：課堂觀察紀錄表】。';
+    let customDocs = [];
 
-    // 優先讀取已修改的最新密碼 (V2)
+    // 優先讀取已修改的最新密碼與表件設定 (V2)
     const rawV2 = localStorage.getItem('OPEN_CLASS_SETTINGS_V2');
     if (rawV2) {
       try {
         const parsed = JSON.parse(rawV2);
-        if (parsed && parsed.adminPassword) {
-          savedPass = parsed.adminPassword;
+        if (parsed) {
+          if (parsed.adminPassword) savedPass = parsed.adminPassword;
+          if (parsed.docDriveUrl !== undefined) docDriveUrl = parsed.docDriveUrl;
+          if (parsed.docDriveTitle) docDriveTitle = parsed.docDriveTitle;
+          if (parsed.docNoticeText !== undefined) docNoticeText = parsed.docNoticeText;
+          if (Array.isArray(parsed.customDocs)) customDocs = parsed.customDocs;
         }
       } catch (e) { console.error('Settings read error', e); }
     } else {
@@ -141,19 +149,24 @@ class DataStore {
       }
     }
 
-    const lockedSettings = {
+    const initialSettings = {
       siteTitle: fixedTitle,
       siteSubtitle: fixedSubtitle,
-      adminPassword: savedPass
+      adminPassword: savedPass,
+      docDriveUrl: docDriveUrl,
+      docDriveTitle: docDriveTitle,
+      docNoticeText: docNoticeText,
+      customDocs: customDocs
     };
-    this.saveSettings(lockedSettings);
-    return lockedSettings;
+    this.saveSettings(initialSettings);
+    return initialSettings;
   }
 
   saveSettings(newSettings = this.settings) {
     this.settings = newSettings;
     localStorage.setItem(this.storageSettingsKey, JSON.stringify(newSettings));
     this.triggerDailySnapshot();
+    this.pushToCloud('updateSettings', null, { settings: newSettings });
   }
 
   getSnapshots() {
@@ -345,6 +358,13 @@ class DataStore {
         }
 
         if (json.settings && json.settings.siteTitle) {
+          if (typeof json.settings.customDocs === 'string') {
+            try {
+              json.settings.customDocs = JSON.parse(json.settings.customDocs);
+            } catch (e) {
+              json.settings.customDocs = [];
+            }
+          }
           this.settings = { ...this.settings, ...json.settings };
           localStorage.setItem(this.storageSettingsKey, JSON.stringify(this.settings));
         }
@@ -393,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCalendarControls();
   initExportEngine();
   initSettingsForm();
+  initDocSettingsForm();
 
   renderCurrentPortal();
 });
@@ -417,6 +438,20 @@ function applySystemSettings() {
   const settingSubtitleInput = document.getElementById('settingSiteSubtitle');
   if (settingTitleInput) settingTitleInput.value = siteTitle;
   if (settingSubtitleInput) settingSubtitleInput.value = siteSubtitle || "";
+
+  // 填入表件下載設定表單與動態更新表件下載視窗
+  const settingDocDriveTitleInput = document.getElementById('settingDocDriveTitle');
+  const settingDocDriveUrlInput = document.getElementById('settingDocDriveUrl');
+  const settingDocNoticeTextInput = document.getElementById('settingDocNoticeText');
+  const testDriveLinkBtn = document.getElementById('testDriveLinkBtn');
+
+  if (settingDocDriveTitleInput) settingDocDriveTitleInput.value = store.settings.docDriveTitle || "中山國小教務處雲端硬碟表件專區";
+  if (settingDocDriveUrlInput) settingDocDriveUrlInput.value = store.settings.docDriveUrl || "https://drive.google.com";
+  if (settingDocNoticeTextInput) settingDocNoticeTextInput.value = store.settings.docNoticeText || "";
+  if (testDriveLinkBtn) testDriveLinkBtn.href = store.settings.docDriveUrl || "https://drive.google.com";
+
+  renderDownloadDocsModal();
+  renderAdminCustomDocsList();
 }
 
 // 前後台 Portal 切換
@@ -904,6 +939,8 @@ function renderBackendPortal() {
     renderAdminWeekSchedule();
   } else if (store.adminSubView === 'master') {
     renderAdminMasterTable();
+  } else if (store.adminSubView === 'docs') {
+    renderAdminCustomDocsList();
   } else if (store.adminSubView === 'settings') {
     renderAutoBackupTable();
   }
@@ -1263,6 +1300,21 @@ function getStatusBadgeClass(status) {
 // ==========================================================================
 // 6. Modals
 // ==========================================================================
+window.openDownloadDocsModal = function() {
+  const modal = document.getElementById('downloadDocsModal');
+  if (modal) {
+    renderDownloadDocsModal();
+    modal.classList.add('active');
+  }
+};
+
+window.closeDownloadDocsModal = function() {
+  const modal = document.getElementById('downloadDocsModal');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+};
+
 function initModals() {
   const openClassModal = document.getElementById('openClassModal');
   const detailModal = document.getElementById('detailModal');
@@ -1271,21 +1323,24 @@ function initModals() {
   const closeDownloadDocsModalBtn = document.getElementById('closeDownloadDocsModalBtn');
   const closeDownloadDocsFooterBtn = document.getElementById('closeDownloadDocsFooterBtn');
 
-  if (downloadDocsBtn && downloadDocsModal) {
-    downloadDocsBtn.addEventListener('click', () => {
-      downloadDocsModal.classList.add('active');
+  if (downloadDocsBtn) {
+    downloadDocsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.openDownloadDocsModal();
     });
   }
 
-  if (closeDownloadDocsModalBtn && downloadDocsModal) {
-    closeDownloadDocsModalBtn.addEventListener('click', () => {
-      downloadDocsModal.classList.remove('active');
+  if (closeDownloadDocsModalBtn) {
+    closeDownloadDocsModalBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.closeDownloadDocsModal();
     });
   }
 
-  if (closeDownloadDocsFooterBtn && downloadDocsModal) {
-    closeDownloadDocsFooterBtn.addEventListener('click', () => {
-      downloadDocsModal.classList.remove('active');
+  if (closeDownloadDocsFooterBtn) {
+    closeDownloadDocsFooterBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.closeDownloadDocsModal();
     });
   }
 
@@ -1941,3 +1996,293 @@ function downloadDocTemplate(type) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ==========================================================================
+// 9. 表件管理與雲端資源動態引擎 (教務處後台專用)
+// ==========================================================================
+
+// 動態渲染前台「公開授課表件下載 Modal」
+function renderDownloadDocsModal() {
+  const modalNoticeBox = document.getElementById('modalNoticeBox');
+  const modalNoticeContent = document.getElementById('modalNoticeContent');
+  const displayDocDriveTitle = document.getElementById('displayDocDriveTitle');
+  const driveDownloadLink = document.getElementById('driveDownloadLink');
+  const dynamicContainer = document.getElementById('dynamicCustomDocsContainer');
+
+  const settings = store.settings || {};
+
+  // 1. 渲染宣導規範文字
+  if (modalNoticeBox && modalNoticeContent) {
+    if (settings.docNoticeText && settings.docNoticeText.trim() !== '') {
+      modalNoticeBox.style.display = 'block';
+      modalNoticeContent.innerHTML = settings.docNoticeText.replace(/\n/g, '<br>');
+    } else {
+      modalNoticeBox.style.display = 'none';
+    }
+  }
+
+  // 2. 渲染教務處 Google 雲端硬碟連結與標題
+  if (displayDocDriveTitle) {
+    displayDocDriveTitle.innerHTML = `<i class="fa-brands fa-google-drive"></i> ${settings.docDriveTitle || '中山國小教務處雲端硬碟表件專區'}`;
+  }
+  if (driveDownloadLink) {
+    driveDownloadLink.href = settings.docDriveUrl || 'https://drive.google.com';
+  }
+
+  // 3. 動態渲染自訂表件卡片
+  if (dynamicContainer) {
+    dynamicContainer.innerHTML = '';
+    const customList = Array.isArray(settings.customDocs) ? settings.customDocs : [];
+
+    customList.forEach((doc, idx) => {
+      const card = document.createElement('div');
+      card.className = 'doc-card sketch-card';
+      card.style.cssText = 'padding: 1rem; background: white; border: 2px solid var(--ink-border);';
+
+      const tagColor = doc.tagColor || '#059669';
+      const tagName = doc.tag || '校內資源';
+      const iconClass = doc.iconClass || 'fa-solid fa-file-lines';
+
+      card.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 0.75rem;">
+          <span class="badge" style="background: ${tagColor}20; color: ${tagColor}; border: 1.5px solid ${tagColor}; font-size: 0.85rem; padding: 4px 8px; flex-shrink: 0; font-weight: bold;">
+            ${tagName}
+          </span>
+          <div>
+            <h4 style="margin: 0; font-size: 0.98rem; color: var(--text-main);">${doc.title || '自訂表件'}</h4>
+            <small class="text-muted">${doc.desc || '教務處自訂下載項目'}</small>
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0.5rem;">
+          ${doc.fileData ? `
+            <button type="button" class="btn btn-sm btn-sketch-success" onclick="downloadCustomFile('${doc.id}')">
+              <i class="${iconClass}"></i> 下載檔案 (${doc.fileName || '表件檔案'})
+            </button>
+          ` : `
+            <a href="${doc.url || '#'}" target="_blank" class="btn btn-sm btn-sketch-primary">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> 開啟 / 下載資源
+            </a>
+          `}
+        </div>
+      `;
+      dynamicContainer.appendChild(card);
+    });
+  }
+}
+
+// 下載後台管理員上傳之 Base64 自訂表件檔案
+window.downloadCustomFile = function(docId) {
+  const customList = Array.isArray(store.settings.customDocs) ? store.settings.customDocs : [];
+  const doc = customList.find(d => d.id === docId);
+  if (!doc || !doc.fileData) return alert('找不到該檔案資料！');
+
+  const a = document.createElement('a');
+  a.href = doc.fileData;
+  a.download = doc.fileName || '公開授課表件';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
+// 後台表件管理設定表單監聽與即時更新
+function initDocSettingsForm() {
+  const form = document.getElementById('docSettingsForm');
+  if (!form) return;
+
+  const titleInput = document.getElementById('settingDocDriveTitle');
+  const urlInput = document.getElementById('settingDocDriveUrl');
+  const noticeInput = document.getElementById('settingDocNoticeText');
+  const testBtn = document.getElementById('testDriveLinkBtn');
+  const addDocBtn = document.getElementById('addCustomDocItemBtn');
+
+  if (urlInput && testBtn) {
+    urlInput.addEventListener('input', () => {
+      testBtn.href = urlInput.value.trim() || '#';
+    });
+  }
+
+  if (addDocBtn) {
+    addDocBtn.addEventListener('click', () => {
+      addCustomDocPrompt();
+    });
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const driveTitle = titleInput ? titleInput.value.trim() : '中山國小教務處雲端硬碟表件專區';
+    const driveUrl = urlInput ? urlInput.value.trim() : 'https://drive.google.com';
+    const noticeText = noticeInput ? noticeInput.value.trim() : '';
+
+    store.settings.docDriveTitle = driveTitle;
+    store.settings.docDriveUrl = driveUrl;
+    store.settings.docNoticeText = noticeText;
+
+    store.saveSettings();
+    renderDownloadDocsModal();
+
+    alert('🎉 教務處表件管理與雲端連結已成功儲存！\n前台老師點選「公開授課表件下載」即刻看到最新內容！');
+  });
+}
+
+// 渲染教務處後台「常用表件清單編輯器」
+function renderAdminCustomDocsList() {
+  const container = document.getElementById('customDocsAdminList');
+  if (!container) return;
+
+  const customDocs = Array.isArray(store.settings.customDocs) ? store.settings.customDocs : [];
+  container.innerHTML = '';
+
+  if (customDocs.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 1.5rem; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: var(--text-muted);">
+        <i class="fa-solid fa-folder-open" style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #94a3b8; display: block;"></i>
+        目前尚未新增任何自訂表件或雲端資源。<br>
+        <small>點選上方「＋ 新增表件 / 外部檔案資源」按鈕，即可隨時上傳學校專屬表件、Word/PDF 或 Google 雲端連結！</small>
+      </div>
+    `;
+    return;
+  }
+
+  customDocs.forEach((doc, idx) => {
+    const itemCard = document.createElement('div');
+    itemCard.className = 'sketch-card';
+    itemCard.style.cssText = 'padding: 0.85rem 1rem; background: #fafafa; border: 1.5px solid var(--ink-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;';
+
+    itemCard.innerHTML = `
+      <div style="flex: 1; min-width: 240px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <span class="badge" style="background: ${doc.tagColor || '#059669'}20; color: ${doc.tagColor || '#059669'}; border: 1px solid ${doc.tagColor || '#059669'}; font-size: 0.8rem; padding: 2px 6px;">
+            ${doc.tag || '表件資源'}
+          </span>
+          <strong style="color: var(--text-main); font-size: 0.95rem;">${doc.title}</strong>
+        </div>
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 4px;">
+          ${doc.desc || '無備註說明'}
+        </div>
+        <div style="font-size: 0.78rem; color: #64748b;">
+          ${doc.fileData ? `<i class="fa-solid fa-paperclip"></i> 已上傳本機檔案: <strong>${doc.fileName}</strong>` : `<i class="fa-solid fa-link"></i> 下載連結: <a href="${doc.url}" target="_blank" style="color: #2563eb;">${doc.url}</a>`}
+        </div>
+      </div>
+      <div style="display: flex; gap: 6px; flex-shrink: 0;">
+        <button type="button" class="btn btn-sm btn-sketch-secondary" onclick="editCustomDocPrompt('${doc.id}')">
+          <i class="fa-solid fa-pen-to-square"></i> 編輯
+        </button>
+        <button type="button" class="btn btn-sm btn-sketch-outline text-danger" onclick="deleteCustomDoc('${doc.id}')">
+          <i class="fa-solid fa-trash-can"></i> 刪除
+        </button>
+      </div>
+    `;
+    container.appendChild(itemCard);
+  });
+}
+
+// 新增自訂表件對話框
+window.addCustomDocPrompt = function() {
+  const title = prompt('【步驟 1/3】請輸入表件名稱 (例如: 115公開授課成果照片黏貼單範本)：');
+  if (!title || title.trim() === '') return;
+
+  const desc = prompt('【步驟 2/3】請輸入表件說明摘要 (例如: 授課教師撰寫成果或議課時使用)：', '教務處自訂下載表件');
+  if (desc === null) return;
+
+  const choice = confirm('【步驟 3/3】請選擇新增方式：\n\n【確定】：直接輸入 Google 雲端硬碟或外部下載網址 (URL)\n【取消】：直接自電腦上傳檔案 (Word/PDF/Excel/圖片，檔案將直接嵌入系統)');
+
+  if (choice) {
+    const url = prompt('請輸入檔案下載網址或 Google Drive 雲端連結：', 'https://drive.google.com');
+    if (!url || url.trim() === '') return;
+
+    const newDoc = {
+      id: 'DOC-' + Date.now().toString().slice(-6),
+      title: title.trim(),
+      desc: desc.trim(),
+      url: url.trim(),
+      tag: '自訂資源',
+      tagColor: '#2563eb'
+    };
+
+    if (!Array.isArray(store.settings.customDocs)) store.settings.customDocs = [];
+    store.settings.customDocs.push(newDoc);
+    store.saveSettings();
+    renderAdminCustomDocsList();
+    renderDownloadDocsModal();
+    alert('✅ 已成功新增自訂表件連結！');
+  } else {
+    // 建立檔案選擇器
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.doc,.docx,.pdf,.odt,.xls,.xlsx,.ppt,.pptx,.jpg,.png,.zip';
+    fileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        return alert('⚠️ 檔案大小超過 5MB，建議上傳至 Google 雲端硬碟並使用網址連結！');
+      }
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const fileBase64 = evt.target.result;
+        const newDoc = {
+          id: 'DOC-' + Date.now().toString().slice(-6),
+          title: title.trim(),
+          desc: desc.trim(),
+          fileName: file.name,
+          fileData: fileBase64,
+          tag: '上傳檔案',
+          tagColor: '#16a34a'
+        };
+
+        if (!Array.isArray(store.settings.customDocs)) store.settings.customDocs = [];
+        store.settings.customDocs.push(newDoc);
+        store.saveSettings();
+        renderAdminCustomDocsList();
+        renderDownloadDocsModal();
+        alert(`✅ 已成功上傳表件【${file.name}】！`);
+      };
+      reader.readAsDataURL(file);
+    };
+    fileInput.click();
+  }
+};
+
+// 編輯自訂表件對話框
+window.editCustomDocPrompt = function(docId) {
+  const customDocs = Array.isArray(store.settings.customDocs) ? store.settings.customDocs : [];
+  const doc = customDocs.find(d => d.id === docId);
+  if (!doc) return;
+
+  const newTitle = prompt('請輸入修改後的表件名稱：', doc.title);
+  if (!newTitle || newTitle.trim() === '') return;
+
+  const newDesc = prompt('請輸入修改後的說明摘要：', doc.desc);
+  if (newDesc === null) return;
+
+  doc.title = newTitle.trim();
+  doc.desc = newDesc.trim();
+
+  if (!doc.fileData) {
+    const newUrl = prompt('請輸入下載網址：', doc.url || 'https://drive.google.com');
+    if (newUrl) doc.url = newUrl.trim();
+  }
+
+  store.saveSettings();
+  renderAdminCustomDocsList();
+  renderDownloadDocsModal();
+  alert('✅ 表件資訊已成功更新！');
+};
+
+// 刪除自訂表件
+window.deleteCustomDoc = function(docId) {
+  const customDocs = Array.isArray(store.settings.customDocs) ? store.settings.customDocs : [];
+  const idx = customDocs.findIndex(d => d.id === docId);
+  if (idx === -1) return;
+
+  if (confirm(`確定要刪除表件【${customDocs[idx].title}】嗎？`)) {
+    customDocs.splice(idx, 1);
+    store.saveSettings();
+    renderAdminCustomDocsList();
+    renderDownloadDocsModal();
+    alert('✅ 已刪除該表件項目！');
+  }
+};
+

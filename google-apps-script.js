@@ -41,15 +41,17 @@ function doPost(e) {
     var sheetData = getOrCreateSheet(ss, 公開授課明細);
     var sheetSettings = getOrCreateSheet(ss, 系統設定);
 
-    if (action === addOpenClass) {
+    if (action === "addOpenClass") {
       appendOpenClass(sheetData, payload.data);
-    } else if (action === updateOpenClass) {
+    } else if (action === "updateOpenClass") {
       updateOpenClass(sheetData, payload.id, payload.data);
-    } else if (action === registerObserver) {
+    } else if (action === "registerObserver") {
       registerObserver(sheetData, payload.id, payload.observer);
-    } else if (action === updatePassword) {
+    } else if (action === "updatePassword") {
       updatePassword(sheetSettings, payload.password);
-    } else if (action === batchUpdateStatus) {
+    } else if (action === "updateSettings") {
+      updateAllSettings(sheetSettings, payload.settings);
+    } else if (action === "batchUpdateStatus") {
       batchUpdateStatus(sheetData, payload.ids, payload.status);
     } else if (action === "syncAll") {
       syncAllData(sheetData, sheetSettings, payload.openClasses, payload.settings);
@@ -227,16 +229,38 @@ function batchUpdateStatus(sheet, ids, newStatus) {
  }
 }
 
-function syncAllData(sheetData, sheetSettings, openClasses, settings) {
- // 清空舊明細並全量寫入
- sheetData.clearContents();
- sheetData.appendRow(HEADERS);
- sheetData.getRange(1, 1, 1, HEADERS.length).setBackground(#fef08a).setFontWeight(bold);
- for (var i = 0; i < openClasses.length; i++) {
- appendOpenClass(sheetData, openClasses[i]);
- }
+function updateAllSettings(sheet, settings) {
+  if (!settings) return;
+  var data = sheet.getDataRange().getValues();
+  var map = {};
+  for (var i = 1; i < data.length; i++) {
+    map[data[i][0]] = i + 1;
+  }
 
- if (settings && settings.adminPassword) {
- updatePassword(sheetSettings, settings.adminPassword);
- }
+  for (var key in settings) {
+    var val = settings[key];
+    if (typeof val === 'object') {
+      val = JSON.stringify(val);
+    }
+    if (map[key]) {
+      sheet.getRange(map[key], 2).setValue(val);
+    } else {
+      sheet.appendRow([key, val]);
+      map[key] = sheet.getLastRow();
+    }
+  }
+}
+
+function syncAllData(sheetData, sheetSettings, openClasses, settings) {
+  // 清空舊明細並全量寫入
+  sheetData.clearContents();
+  sheetData.appendRow(HEADERS);
+  sheetData.getRange(1, 1, 1, HEADERS.length).setBackground("#fef08a").setFontWeight("bold");
+  for (var i = 0; i < openClasses.length; i++) {
+    appendOpenClass(sheetData, openClasses[i]);
+  }
+
+  if (settings) {
+    updateAllSettings(sheetSettings, settings);
+  }
 }
