@@ -539,16 +539,28 @@
               </div>
             </div>
 
-            <!-- 區塊 3: 自訂與編修表件清單 -->
+            <!-- 區塊 3: 表件一、表二、表三 檔案上傳與自訂替換專區 (依使用者要求) -->
+            <div class="settings-box sketch-card" style="margin-bottom: 1.5rem; padding: 1.25rem; background: #eff6ff; border: 2.5px solid #3b82f6;">
+              <h4 style="color: #1e40af; margin-bottom: 0.5rem;"><i class="fa-solid fa-file-arrow-up"></i> 3. 表件一、表件二、表件三 自訂檔案上傳專區</h4>
+              <p style="font-size: 0.85rem; color: #1e3a8a; margin-bottom: 1rem; line-height: 1.5;">
+                您可以在此直接上傳學校現有的 <strong>Word (.doc/.docx)、PDF 或 ODT</strong> 檔案。上傳後，前台老師點選下載時將<strong>直接下載您上傳的專屬檔案</strong>；若未上傳或點選「恢復預設」，系統將自動採用教育局標準排版即時生成 Word 表格！
+              </p>
+
+              <div id="standardDocsAdminList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 0.5rem;">
+                <!-- JS 動態渲染表一、表二、表三專屬上傳管理卡片 -->
+              </div>
+            </div>
+
+            <!-- 區塊 4: 自訂與擴充更多表件清單 -->
             <div class="settings-box sketch-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px;">
-                <h4 style="color: #9333ea; margin: 0;"><i class="fa-solid fa-list-check"></i> 3. 常用表件與參考資源清單編修</h4>
+                <h4 style="color: #9333ea; margin: 0;"><i class="fa-solid fa-list-check"></i> 4. 更多常用表件與參考資源清單編修</h4>
                 <button type="button" class="btn btn-sm btn-sketch-success" id="addCustomDocItemBtn">
                   <i class="fa-solid fa-plus"></i> 新增表件 / 外部檔案資源
                 </button>
               </div>
               <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-                系統預設提供新北市教育局標準規範之【表一】、【表二】、【表三】Word 即時產出樣板與流程 PDF。教務處亦可在下方自訂新增更多校內專屬表件、成果範本或外部雲端連結！
+                除了表一至表三外，教務處亦可在下方自訂新增更多校內專屬表件、成果範本、公開授課照片黏貼單或外部 Google 雲端連結！
               </p>
 
               <div id="customDocsAdminList" style="display: flex; flex-direction: column; gap: 12px;">
@@ -596,15 +608,15 @@
         <div class="doc-cards-grid" id="docCardsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
           
           <!-- 表件一 -->
-          <div class="doc-card sketch-card" style="padding: 1rem; background: white; border: 2px solid var(--ink-border);">
+          <div class="doc-card sketch-card" id="docCardPlan" style="padding: 1rem; background: white; border: 2px solid var(--ink-border);">
             <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 0.75rem;">
               <span class="badge badge-approved" style="font-size: 0.85rem; padding: 4px 8px; flex-shrink: 0;">表件一</span>
               <div>
-                <h4 style="margin: 0; font-size: 0.98rem; color: var(--text-main);">教學活動設計表 (教案與共備重點)</h4>
-                <small class="text-muted">授課人員填寫・含共同備課重點摘述與教學活動設計</small>
+                <h4 style="margin: 0; font-size: 0.98rem; color: var(--text-main);" id="docTitlePlan">教學活動設計表 (教案與共備重點)</h4>
+                <small class="text-muted" id="docDescPlan">授課人員填寫・含共同備課重點摘述與教學活動設計</small>
               </div>
             </div>
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0.5rem;">
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0.5rem;" id="docActionsPlan">
               <button type="button" class="btn btn-sm btn-sketch-primary" onclick="downloadDocTemplate('plan')">
                 <i class="fa-solid fa-file-word"></i> 下載 Word 表格 (.doc)
               </button>
@@ -612,15 +624,15 @@
           </div>
 
           <!-- 表件二 -->
-          <div class="doc-card sketch-card" style="padding: 1rem; background: white; border: 2px solid var(--ink-border);">
+          <div class="doc-card sketch-card" id="docCardObs" style="padding: 1rem; background: white; border: 2px solid var(--ink-border);">
             <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 0.75rem;">
               <span class="badge badge-draft" style="font-size: 0.85rem; padding: 4px 8px; flex-shrink: 0;">表件二</span>
               <div>
-                <h4 style="margin: 0; font-size: 0.98rem; color: var(--text-main);">公開授課課堂觀察紀錄表 (觀課紀錄)</h4>
-                <small class="text-muted">觀課人員填寫・含學生學習表現與教學觀察向度</small>
+                <h4 style="margin: 0; font-size: 0.98rem; color: var(--text-main);" id="docTitleObs">公開授課課堂觀察紀錄表 (觀課紀錄)</h4>
+                <small class="text-muted" id="docDescObs">觀課人員填寫・含學生學習表現與教學觀察向度</small>
               </div>
             </div>
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0.5rem;">
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0.5rem;" id="docActionsObs">
               <button type="button" class="btn btn-sm btn-sketch-primary" onclick="downloadDocTemplate('obs')">
                 <i class="fa-solid fa-file-word"></i> 下載 Word 表格 (.doc)
               </button>
@@ -628,15 +640,15 @@
           </div>
 
           <!-- 表件三 -->
-          <div class="doc-card sketch-card" style="padding: 1rem; background: white; border: 2px solid var(--ink-border);">
+          <div class="doc-card sketch-card" id="docCardPost" style="padding: 1rem; background: white; border: 2px solid var(--ink-border);">
             <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 0.75rem;">
               <span class="badge badge-type-district" style="font-size: 0.85rem; padding: 4px 8px; flex-shrink: 0;">表件三</span>
               <div>
-                <h4 style="margin: 0; font-size: 0.98rem; color: var(--text-main);">教學省思心得與共同議課紀錄表</h4>
-                <small class="text-muted">授課人員填寫・含議課照片紀錄與專業回饋研討</small>
+                <h4 style="margin: 0; font-size: 0.98rem; color: var(--text-main);" id="docTitlePost">教學省思心得與共同議課紀錄表</h4>
+                <small class="text-muted" id="docDescPost">授課人員填寫・含議課照片紀錄與專業回饋研討</small>
               </div>
             </div>
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0.5rem;">
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0.5rem;" id="docActionsPost">
               <button type="button" class="btn btn-sm btn-sketch-primary" onclick="downloadDocTemplate('post')">
                 <i class="fa-solid fa-file-word"></i> 下載 Word 表格 (.doc)
               </button>

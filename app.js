@@ -122,7 +122,11 @@ class DataStore {
     let docDriveUrl = 'https://drive.google.com';
     let docDriveTitle = '中山國小教務處雲端硬碟表件專區';
     let docNoticeText = '新北市政府教育局公開授課表件規範：\n授課教師於公開授課後，請繳交【表一：教學活動設計表】與【表三：教學省思與議課表】至教務處留校備查；觀課教師請繳交【表二：課堂觀察紀錄表】。';
-    let customDocs = [];
+    let standardDocs = {
+      plan: { title: '教學活動設計表 (教案與共備重點)', desc: '授課人員填寫・含共同備課重點摘述與教學活動設計', fileName: null, fileData: null },
+      obs: { title: '公開授課課堂觀察紀錄表 (觀課紀錄)', desc: '觀課人員填寫・含學生學習表現與教學觀察向度', fileName: null, fileData: null },
+      post: { title: '教學省思心得與共同議課紀錄表', desc: '授課人員填寫・含議課照片紀錄與專業回饋研討', fileName: null, fileData: null }
+    };
 
     // 優先讀取已修改的最新密碼與表件設定 (V2)
     const rawV2 = localStorage.getItem('OPEN_CLASS_SETTINGS_V2');
@@ -135,6 +139,7 @@ class DataStore {
           if (parsed.docDriveTitle) docDriveTitle = parsed.docDriveTitle;
           if (parsed.docNoticeText !== undefined) docNoticeText = parsed.docNoticeText;
           if (Array.isArray(parsed.customDocs)) customDocs = parsed.customDocs;
+          if (parsed.standardDocs) standardDocs = { ...standardDocs, ...parsed.standardDocs };
         }
       } catch (e) { console.error('Settings read error', e); }
     } else {
@@ -156,7 +161,8 @@ class DataStore {
       docDriveUrl: docDriveUrl,
       docDriveTitle: docDriveTitle,
       docNoticeText: docNoticeText,
-      customDocs: customDocs
+      customDocs: customDocs,
+      standardDocs: standardDocs
     };
     this.saveSettings(initialSettings);
     return initialSettings;
@@ -365,6 +371,13 @@ class DataStore {
               json.settings.customDocs = [];
             }
           }
+          if (typeof json.settings.standardDocs === 'string') {
+            try {
+              json.settings.standardDocs = JSON.parse(json.settings.standardDocs);
+            } catch (e) {
+              json.settings.standardDocs = null;
+            }
+          }
           this.settings = { ...this.settings, ...json.settings };
           localStorage.setItem(this.storageSettingsKey, JSON.stringify(this.settings));
         }
@@ -451,6 +464,7 @@ function applySystemSettings() {
   if (testDriveLinkBtn) testDriveLinkBtn.href = store.settings.docDriveUrl || "https://drive.google.com";
 
   renderDownloadDocsModal();
+  renderAdminStandardDocsList();
   renderAdminCustomDocsList();
 }
 
@@ -940,6 +954,7 @@ function renderBackendPortal() {
   } else if (store.adminSubView === 'master') {
     renderAdminMasterTable();
   } else if (store.adminSubView === 'docs') {
+    renderAdminStandardDocsList();
     renderAdminCustomDocsList();
   } else if (store.adminSubView === 'settings') {
     renderAutoBackupTable();
@@ -1816,6 +1831,18 @@ function exportToCSV() {
 // 8. 表件下載引擎 (Word .doc 格式即時生成)
 // ==========================================================================
 function downloadDocTemplate(type) {
+  // 若管理員已上傳自訂檔案，直接下載管理員上傳的專屬檔案！
+  const standardDocs = (store.settings && store.settings.standardDocs) ? store.settings.standardDocs : {};
+  if (standardDocs[type] && standardDocs[type].fileData) {
+    const a = document.createElement('a');
+    a.href = standardDocs[type].fileData;
+    a.download = standardDocs[type].fileName || `公開授課_${standardDocs[type].title}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return;
+  }
+
   let fileName = "";
   let html = "";
 
@@ -2010,6 +2037,7 @@ function renderDownloadDocsModal() {
   const dynamicContainer = document.getElementById('dynamicCustomDocsContainer');
 
   const settings = store.settings || {};
+  const standardDocs = settings.standardDocs || {};
 
   // 1. 渲染宣導規範文字
   if (modalNoticeBox && modalNoticeContent) {
@@ -2028,6 +2056,38 @@ function renderDownloadDocsModal() {
   if (driveDownloadLink) {
     driveDownloadLink.href = settings.docDriveUrl || 'https://drive.google.com';
   }
+
+  // 2.5 更新標準表一、表二、表三的下載狀態與標示
+  const updateStandardCard = (key, cardId, titleId, descId, actionsId, defaultName) => {
+    const card = document.getElementById(cardId);
+    const titleEl = document.getElementById(titleId);
+    const descEl = document.getElementById(descId);
+    const actionsEl = document.getElementById(actionsId);
+    if (!card || !actionsEl) return;
+
+    const docConfig = standardDocs[key];
+    if (docConfig && docConfig.fileData) {
+      if (titleEl && docConfig.title) titleEl.textContent = docConfig.title;
+      if (descEl) descEl.innerHTML = `<span style="color:#16a34a; font-weight:bold;"><i class="fa-solid fa-circle-check"></i> 教務處已自訂上傳檔案：</span> ${docConfig.fileName || '專屬表件'}`;
+      actionsEl.innerHTML = `
+        <button type="button" class="btn btn-sm btn-sketch-success" onclick="downloadDocTemplate('${key}')">
+          <i class="fa-solid fa-cloud-arrow-down"></i> 下載自訂表件 (${docConfig.fileName || '專屬檔案'})
+        </button>
+      `;
+    } else {
+      if (titleEl && docConfig && docConfig.title) titleEl.textContent = docConfig.title;
+      if (descEl && docConfig && docConfig.desc) descEl.textContent = docConfig.desc;
+      actionsEl.innerHTML = `
+        <button type="button" class="btn btn-sm btn-sketch-primary" onclick="downloadDocTemplate('${key}')">
+          <i class="fa-solid fa-file-word"></i> 下載 Word 表格 (.doc)
+        </button>
+      `;
+    }
+  };
+
+  updateStandardCard('plan', 'docCardPlan', 'docTitlePlan', 'docDescPlan', 'docActionsPlan', '教學活動設計表');
+  updateStandardCard('obs', 'docCardObs', 'docTitleObs', 'docDescObs', 'docActionsObs', '課堂觀察紀錄表');
+  updateStandardCard('post', 'docCardPost', 'docTitlePost', 'docDescPost', 'docActionsPost', '教學省思心得與共同議課紀錄表');
 
   // 3. 動態渲染自訂表件卡片
   if (dynamicContainer) {
@@ -2285,4 +2345,149 @@ window.deleteCustomDoc = function(docId) {
     alert('✅ 已刪除該表件項目！');
   }
 };
+
+// ==========================================================================
+// 10. 表件一、表件二、表件三 專屬檔案上傳管理引擎
+// ==========================================================================
+
+// 渲染後台「表件一、表二、表三 自訂檔案上傳專區」
+function renderAdminStandardDocsList() {
+  const container = document.getElementById('standardDocsAdminList');
+  if (!container) return;
+
+  if (!store.settings.standardDocs) {
+    store.settings.standardDocs = {
+      plan: { title: '教學活動設計表 (教案與共備重點)', desc: '授課人員填寫・含共同備課重點摘述與教學活動設計', fileName: null, fileData: null },
+      obs: { title: '公開授課課堂觀察紀錄表 (觀課紀錄)', desc: '觀課人員填寫・含學生學習表現與教學觀察向度', fileName: null, fileData: null },
+      post: { title: '教學省思心得與共同議課紀錄表', desc: '授課人員填寫・含議課照片紀錄與專業回饋研討', fileName: null, fileData: null }
+    };
+  }
+
+  const standardDocs = store.settings.standardDocs;
+  const items = [
+    { key: 'plan', tag: '表件一', badgeClass: 'badge-approved', defaultName: '新北市中山國小_表件一_教學活動設計與共備表.doc' },
+    { key: 'obs', tag: '表件二', badgeClass: 'badge-draft', defaultName: '新北市中山國小_表件二_公開授課課堂觀察紀錄表.doc' },
+    { key: 'post', tag: '表件三', badgeClass: 'badge-type-district', defaultName: '新北市中山國小_表件三_教學省思與共同議課紀錄表.doc' }
+  ];
+
+  container.innerHTML = '';
+
+  items.forEach(item => {
+    const config = standardDocs[item.key] || {};
+    const hasCustomFile = !!config.fileData;
+
+    const div = document.createElement('div');
+    div.className = 'sketch-card';
+    div.style.cssText = `padding: 1rem; background: ${hasCustomFile ? '#f0fdf4' : '#ffffff'}; border: 2px solid ${hasCustomFile ? '#16a34a' : 'var(--ink-border)'}; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;`;
+
+    div.innerHTML = `
+      <div style="flex: 1; min-width: 260px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <span class="badge ${item.badgeClass}" style="font-size: 0.85rem; padding: 3px 8px;">${item.tag}</span>
+          <strong style="font-size: 1rem; color: var(--text-main);">${config.title || item.tag}</strong>
+          ${hasCustomFile ? `<span class="badge badge-approved" style="background:#dcfce7; color:#15803d; border:1px solid #16a34a;"><i class="fa-solid fa-circle-check"></i> 已使用您上傳的專屬檔案</span>` : `<span class="badge" style="background:#f1f5f9; color:#64748b;"><i class="fa-solid fa-code"></i> 使用系統標準 Word 樣板</span>`}
+        </div>
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px;">
+          ${config.desc || ''}
+        </div>
+        <div style="font-size: 0.82rem;">
+          ${hasCustomFile ? `
+            <span style="color: #166534;"><i class="fa-solid fa-paperclip"></i> 目前檔案：<strong>${config.fileName}</strong></span>
+          ` : `
+            <span style="color: #64748b;"><i class="fa-solid fa-file-word"></i> 預設檔案：<strong>${item.defaultName}</strong> (點擊時自動產出標準 Word)</span>
+          `}
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap;">
+        ${hasCustomFile ? `
+          <button type="button" class="btn btn-sm btn-sketch-primary" onclick="downloadDocTemplate('${item.key}')">
+            <i class="fa-solid fa-download"></i> 檢視下載檔案
+          </button>
+          <button type="button" class="btn btn-sm btn-sketch-success" onclick="uploadStandardDocFile('${item.key}')">
+            <i class="fa-solid fa-arrow-up-from-bracket"></i> 替換檔案
+          </button>
+          <button type="button" class="btn btn-sm btn-sketch-outline text-danger" onclick="resetStandardDocFile('${item.key}')">
+            <i class="fa-solid fa-rotate-left"></i> 恢復預設樣板
+          </button>
+        ` : `
+          <button type="button" class="btn btn-sm btn-sketch-primary" onclick="downloadDocTemplate('${item.key}')">
+            <i class="fa-solid fa-download"></i> 預覽預設 Word
+          </button>
+          <button type="button" class="btn btn-sm btn-sketch-success" onclick="uploadStandardDocFile('${item.key}')">
+            <i class="fa-solid fa-cloud-arrow-up"></i> 上傳專屬檔案 (.doc/.docx/.pdf/.odt)
+          </button>
+        `}
+      </div>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+// 觸發上傳特定表件（表一、表二、表三）專屬檔案
+window.uploadStandardDocFile = function(type) {
+  const names = {
+    plan: '表件一 (教學活動設計表)',
+    obs: '表件二 (課堂觀察紀錄表)',
+    post: '表件三 (教學省思與議課紀錄表)'
+  };
+  const typeName = names[type] || type;
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.doc,.docx,.pdf,.odt,.xls,.xlsx';
+  fileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      return alert('⚠️ 檔案大小超過 8MB，請壓縮或減小檔案後再上傳！');
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const fileBase64 = evt.target.result;
+
+      if (!store.settings.standardDocs) store.settings.standardDocs = {};
+      if (!store.settings.standardDocs[type]) store.settings.standardDocs[type] = {};
+
+      store.settings.standardDocs[type].fileName = file.name;
+      store.settings.standardDocs[type].fileData = fileBase64;
+
+      store.saveSettings();
+      renderAdminStandardDocsList();
+      renderDownloadDocsModal();
+
+      alert(`🎉 成功上傳！【${typeName}】已成功替換為您的專屬檔案：\n📄 ${file.name}\n\n前台老師點選下載時，將直接下載此專屬檔案！`);
+    };
+    reader.readAsDataURL(file);
+  };
+  fileInput.click();
+};
+
+// 恢復特定表件（表一、表二、表三）為預設 Word 樣板
+window.resetStandardDocFile = function(type) {
+  const names = {
+    plan: '表件一',
+    obs: '表件二',
+    post: '表件三'
+  };
+  const typeName = names[type] || type;
+
+  if (!confirm(`確定要將【${typeName}】恢復為系統標準 Word 生成樣板嗎？\n恢復後將清除已上傳的自訂檔案。`)) {
+    return;
+  }
+
+  if (store.settings.standardDocs && store.settings.standardDocs[type]) {
+    store.settings.standardDocs[type].fileName = null;
+    store.settings.standardDocs[type].fileData = null;
+  }
+
+  store.saveSettings();
+  renderAdminStandardDocsList();
+  renderDownloadDocsModal();
+
+  alert(`✅ 已將【${typeName}】恢復為系統標準 Word 樣板！`);
+};
+
 
