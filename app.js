@@ -122,6 +122,7 @@ class DataStore {
     let docDriveUrl = 'https://drive.google.com';
     let docDriveTitle = '中山國小教務處雲端硬碟表件專區';
     let docNoticeText = '新北市政府教育局公開授課表件規範：\n授課教師於公開授課後，請繳交【表一：教學活動設計表】與【表三：教學省思與議課表】至教務處留校備查；觀課教師請繳交【表二：課堂觀察紀錄表】。';
+    let customDocs = [];
     let standardDocs = {
       plan: { title: '教學活動設計表 (教案與共備重點)', desc: '授課人員填寫・含共同備課重點摘述與教學活動設計', fileName: null, fileData: null },
       obs: { title: '公開授課課堂觀察紀錄表 (觀課紀錄)', desc: '觀課人員填寫・含學生學習表現與教學觀察向度', fileName: null, fileData: null },
@@ -310,6 +311,11 @@ class DataStore {
       iconClass = 'fa-solid fa-arrows-rotate fa-spin';
       bg = '#fef9c3';
       color = '#854d0e';
+    } else if (state === 'error') {
+      currentText = text || '雲端連線異常 (使用本機快取)';
+      iconClass = 'fa-solid fa-triangle-exclamation';
+      bg = '#fee2e2';
+      color = '#b91c1c';
     } else if (this.gasApiUrl) {
       currentText = text || '雲端同步已連線';
       iconClass = 'fa-solid fa-cloud-arrow-up';
@@ -343,7 +349,7 @@ class DataStore {
     }
   }
 
-  async syncFromCloud() {
+  async syncFromCloud(showToast = false) {
     if (!this.gasApiUrl) {
       this.updateCloudStatusBadge();
       return false;
@@ -351,7 +357,10 @@ class DataStore {
 
     try {
       this.updateCloudStatusBadge('syncing', '從雲端載入中...');
-      const res = await fetch(this.gasApiUrl, { cache: 'no-store' });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(this.gasApiUrl, { cache: 'no-store', signal: controller.signal });
+      clearTimeout(timeoutId);
       const json = await res.json();
 
       if (json && json.status === 'success') {
@@ -384,11 +393,17 @@ class DataStore {
         this.updateCloudStatusBadge();
         applySystemSettings();
         renderCurrentPortal();
+        if (showToast) {
+          alert('🟢 雲端同步成功！已載入最新公開授課資料與密碼設定。');
+        }
         return true;
       }
     } catch (err) {
       console.warn('Cloud sync error, fallback to local storage:', err);
-      this.updateCloudStatusBadge('error', '雲端連線失敗 (使用本機快取)');
+      this.updateCloudStatusBadge('error', '雲端連線異常 (使用本機快取)');
+      if (showToast) {
+        alert('⚠️ 雲端同步失敗，目前維持本機快取資料。請檢查網路連線。');
+      }
     }
     return false;
   }
@@ -418,6 +433,19 @@ const store = new DataStore();
 // 2. Controller & Initialization
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
+  store.updateCloudStatusBadge();
+  store.syncFromCloud();
+
+  // 頂部雲端徽章點擊事件：手動重整同步
+  const cloudBadge = document.getElementById('cloudStatusBadge');
+  if (cloudBadge) {
+    cloudBadge.style.cursor = 'pointer';
+    cloudBadge.title = '點此立即重新同步 Google 試算表雲端資料';
+    cloudBadge.addEventListener('click', () => {
+      store.syncFromCloud(true);
+    });
+  }
+
   applySystemSettings();
   initPortalSwitcher();
   initFrontendFilters();

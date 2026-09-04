@@ -14,20 +14,20 @@
 function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheetData = getOrCreateSheet(ss,  公開授課明細);
-    var sheetSettings = getOrCreateSheet(ss, 系統設定);
+    var sheetData = getOrCreateSheet(ss, "公開授課明細");
+    var sheetSettings = getOrCreateSheet(ss, "系統設定");
 
     var openClasses = readOpenClasses(sheetData);
     var settings = readSettings(sheetSettings);
 
     return ContentService.createTextOutput(JSON.stringify({
-      status: success,
+      status: "success",
       openClasses: openClasses,
       settings: settings
     })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({
-      status: error,
+      status: "error",
       message: err.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
@@ -38,8 +38,8 @@ function doPost(e) {
     var payload = JSON.parse(e.postData.contents);
     var action = payload.action;
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheetData = getOrCreateSheet(ss, 公開授課明細);
-    var sheetSettings = getOrCreateSheet(ss, 系統設定);
+    var sheetData = getOrCreateSheet(ss, "公開授課明細");
+    var sheetSettings = getOrCreateSheet(ss, "系統設定");
 
     if (action === "addOpenClass") {
       appendOpenClass(sheetData, payload.data);
@@ -89,15 +89,15 @@ function getOrCreateSheet(ss, sheetName) {
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
-    if (sheetName === 公開授課明細) {
+    if (sheetName === "公開授課明細") {
       sheet.appendRow(HEADERS);
-      sheet.getRange(1, 1, 1, HEADERS.length).setBackground(#fef08a).setFontWeight(bold);
-    } else if (sheetName === 系統設定) {
-      sheet.appendRow([設定鍵, 設定值]);
-      sheet.appendRow([siteTitle, 115學年度新北市中山國民小學公開授課行事曆]);
-      sheet.appendRow([siteSubtitle, 115學年度教師公開授課與觀課報名網]);
-      sheet.appendRow([adminPassword, admin]);
-      sheet.getRange(1, 1, 1, 2).setBackground(#fed7aa).setFontWeight(bold);
+      sheet.getRange(1, 1, 1, HEADERS.length).setBackground("#fef08a").setFontWeight("bold");
+    } else if (sheetName === "系統設定") {
+      sheet.appendRow(["設定鍵", "設定值"]);
+      sheet.appendRow(["siteTitle", "115學年度新北市中山國民小學公開授課行事曆"]);
+      sheet.appendRow(["siteSubtitle", "115學年度教師公開授課與觀課報名網"]);
+      sheet.appendRow(["adminPassword", "admin"]);
+      sheet.getRange(1, 1, 1, 2).setBackground("#fed7aa").setFontWeight("bold");
     }
   }
   return sheet;
@@ -116,18 +116,18 @@ function readOpenClasses(sheet) {
     for (var j = 0; j < headers.length; j++) {
       var key = headers[j];
       var val = row[j];
-      if (key === registeredObservers) {
+      if (key === "registeredObservers") {
         try {
           item[key] = val ? JSON.parse(val) : [];
         } catch (e) {
           item[key] = [];
         }
-      } else if (key === date) {
+      } else if (key === "date") {
         if (val instanceof Date) {
           var y = val.getFullYear();
           var m = String(val.getMonth() + 1).padStart(2, '0');
           var d = String(val.getDate()).padStart(2, '0');
-          item[key] = y + - + m + - + d;
+          item[key] = y + '-' + m + '-' + d;
         } else {
           item[key] = String(val);
         }
@@ -143,9 +143,9 @@ function readOpenClasses(sheet) {
 function readSettings(sheet) {
   var data = sheet.getDataRange().getValues();
   var settings = {
-    siteTitle: 115學年度新北市中山國民小學公開授課行事曆,
-    siteSubtitle: 115學年度教師公開授課與觀課報名網,
-    adminPassword: admin
+    siteTitle: "115學年度新北市中山國民小學公開授課行事曆",
+    siteSubtitle: "115學年度教師公開授課與觀課報名網",
+    adminPassword: "admin"
   };
   for (var i = 1; i < data.length; i++) {
     var k = data[i][0];
@@ -162,71 +162,71 @@ function appendOpenClass(sheet, item) {
   for (var j = 0; j < HEADERS.length; j++) {
     var key = HEADERS[j];
     var val = item[key];
-    if (key === registeredObservers) {
+    if (key === "registeredObservers") {
       row.push(JSON.stringify(val || []));
     } else {
-      row.push(val !== undefined ? val : );
- }
- }
- sheet.appendRow(row);
+      row.push(val !== undefined ? val : "");
+    }
+  }
+  sheet.appendRow(row);
 }
 
 function updateOpenClass(sheet, id, updatedData) {
- var data = sheet.getDataRange().getValues();
- for (var i = 1; i < data.length; i++) {
- if (String(data[i][0]) === String(id)) {
- for (var key in updatedData) {
- var colIdx = HEADERS.indexOf(key);
- if (colIdx !== -1) {
- var val = updatedData[key];
- if (key === registeredObservers) val = JSON.stringify(val);
- sheet.getRange(i + 1, colIdx + 1).setValue(val);
- }
- }
- break;
- }
- }
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(id)) {
+      for (var key in updatedData) {
+        var colIdx = HEADERS.indexOf(key);
+        if (colIdx !== -1) {
+          var val = updatedData[key];
+          if (key === "registeredObservers") val = JSON.stringify(val);
+          sheet.getRange(i + 1, colIdx + 1).setValue(val);
+        }
+      }
+      break;
+    }
+  }
 }
 
 function registerObserver(sheet, id, observer) {
- var data = sheet.getDataRange().getValues();
- var regCol = HEADERS.indexOf(registeredObservers);
- for (var i = 1; i < data.length; i++) {
- if (String(data[i][0]) === String(id)) {
- var raw = data[i][regCol];
- var list = [];
- try { list = JSON.parse(raw) || []; } catch(e) {}
- list.push(observer);
- sheet.getRange(i + 1, regCol + 1).setValue(JSON.stringify(list));
- break;
- }
- }
+  var data = sheet.getDataRange().getValues();
+  var regCol = HEADERS.indexOf("registeredObservers");
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(id)) {
+      var raw = data[i][regCol];
+      var list = [];
+      try { list = JSON.parse(raw) || []; } catch(e) {}
+      list.push(observer);
+      sheet.getRange(i + 1, regCol + 1).setValue(JSON.stringify(list));
+      break;
+    }
+  }
 }
 
 function updatePassword(sheet, newPassword) {
- var data = sheet.getDataRange().getValues();
- var found = false;
- for (var i = 1; i < data.length; i++) {
- if (data[i][0] === adminPassword) {
- sheet.getRange(i + 1, 2).setValue(newPassword);
- found = true;
- break;
- }
- }
- if (!found) {
- sheet.appendRow([adminPassword, newPassword]);
- }
+  var data = sheet.getDataRange().getValues();
+  var found = false;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === "adminPassword") {
+      sheet.getRange(i + 1, 2).setValue(newPassword);
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    sheet.appendRow(["adminPassword", newPassword]);
+  }
 }
 
 function batchUpdateStatus(sheet, ids, newStatus) {
- var data = sheet.getDataRange().getValues();
- var statusCol = HEADERS.indexOf(status);
- for (var i = 1; i < data.length; i++) {
- var id = String(data[i][0]);
- if (ids.indexOf(id) !== -1) {
- sheet.getRange(i + 1, statusCol + 1).setValue(newStatus);
- }
- }
+  var data = sheet.getDataRange().getValues();
+  var statusCol = HEADERS.indexOf("status");
+  for (var i = 1; i < data.length; i++) {
+    var id = String(data[i][0]);
+    if (ids.indexOf(id) !== -1) {
+      sheet.getRange(i + 1, statusCol + 1).setValue(newStatus);
+    }
+  }
 }
 
 function updateAllSettings(sheet, settings) {
