@@ -671,7 +671,7 @@ function renderFrontendPortal() {
   tbody.innerHTML = '';
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">目前無符合條件之已公告公開授課場次。</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted" style="font-size: 0.98rem; padding: 2.5rem 1rem; line-height: 1.8;"><i class="fa-solid fa-clock-rotate-left" style="color: #64748b; margin-right: 6px;"></i>目前公開授課資料填報中，將經過校長同意後再行公告，預計時間為2026年9月30日</td></tr>`;
   } else {
     list.forEach((item, idx) => {
       const regCount = item.registeredObservers ? item.registeredObservers.length : 0;
