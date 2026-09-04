@@ -765,16 +765,21 @@ body {
   .header-actions {
     width: 100%;
     display: flex;
-    gap: 0.4rem;
+    flex-wrap: wrap;
+    gap: 0.45rem;
   }
 
   .header-actions .btn {
-    flex: 1;
-    font-size: 0.78rem;
-    padding: 6px 6px;
-    white-space: normal;
+    flex: 1 1 calc(50% - 0.35rem);
+    font-size: 0.82rem;
+    padding: 8px 6px;
+    white-space: nowrap;
     text-align: center;
     line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
   }
 
   .main-wrapper {

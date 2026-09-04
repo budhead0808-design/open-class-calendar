@@ -1266,6 +1266,28 @@ function getStatusBadgeClass(status) {
 function initModals() {
   const openClassModal = document.getElementById('openClassModal');
   const detailModal = document.getElementById('detailModal');
+  const downloadDocsModal = document.getElementById('downloadDocsModal');
+  const downloadDocsBtn = document.getElementById('downloadDocsBtn');
+  const closeDownloadDocsModalBtn = document.getElementById('closeDownloadDocsModalBtn');
+  const closeDownloadDocsFooterBtn = document.getElementById('closeDownloadDocsFooterBtn');
+
+  if (downloadDocsBtn && downloadDocsModal) {
+    downloadDocsBtn.addEventListener('click', () => {
+      downloadDocsModal.classList.add('active');
+    });
+  }
+
+  if (closeDownloadDocsModalBtn && downloadDocsModal) {
+    closeDownloadDocsModalBtn.addEventListener('click', () => {
+      downloadDocsModal.classList.remove('active');
+    });
+  }
+
+  if (closeDownloadDocsFooterBtn && downloadDocsModal) {
+    closeDownloadDocsFooterBtn.addEventListener('click', () => {
+      downloadDocsModal.classList.remove('active');
+    });
+  }
 
   document.getElementById('closeFormModalBtn').addEventListener('click', () => openClassModal.classList.remove('active'));
   document.getElementById('closeDetailModalBtn').addEventListener('click', () => detailModal.classList.remove('active'));
@@ -1733,4 +1755,189 @@ function exportToCSV() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+// ==========================================================================
+// 8. 表件下載引擎 (Word .doc 格式即時生成)
+// ==========================================================================
+function downloadDocTemplate(type) {
+  let fileName = "";
+  let html = "";
+
+  if (type === 'plan') {
+    fileName = "115學年度新北市中山國小_表件一_教學活動設計與共備表.doc";
+    html = `
+      <div class="header-title">新北市板橋區中山國民小學 115 學年度教師公開授課</div>
+      <div class="sub-title">【表件一】教學活動設計表 (含共同備課重點摘述)</div>
+      <table>
+        <tr>
+          <td style="width: 15%; background: #f2f2f2; font-weight: bold;">授課教師</td>
+          <td style="width: 35%;"></td>
+          <td style="width: 15%; background: #f2f2f2; font-weight: bold;">授課班級</td>
+          <td style="width: 35%;">____年____班</td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">教學領域/科目</td>
+          <td></td>
+          <td style="background: #f2f2f2; font-weight: bold;">公開授課時間</td>
+          <td>____年____月____日 第____節</td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">單元名稱與主題</td>
+          <td colspan="3"></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">共同備課時間</td>
+          <td>____年____月____日</td>
+          <td style="background: #f2f2f2; font-weight: bold;">備課主持人</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">共同備課人員</td>
+          <td colspan="3" style="height: 50px;"></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">共同備課重點摘述</td>
+          <td colspan="3" style="height: 120px;">
+            1. 學生先備經驗與起點行為分析：<br><br>
+            2. 教學目標與核心素養對應：<br><br>
+            3. 教學策略、數位輔具或活動設計：<br><br>
+            4. 評量方式與課堂觀察重點：
+          </td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">教學活動設計歷程</td>
+          <td colspan="3" style="height: 250px;">
+            【準備活動 / 引起動機】：<br><br><br>
+            【發展活動 / 核心教學】：<br><br><br>
+            【綜合活動 / 歸納評量】：<br><br>
+          </td>
+        </tr>
+      </table>
+    `;
+  } else if (type === 'obs') {
+    fileName = "115學年度新北市中山國小_表件二_公開授課課堂觀察紀錄表.doc";
+    html = `
+      <div class="header-title">新北市板橋區中山國民小學 115 學年度教師公開授課</div>
+      <div class="sub-title">【表件二】課堂觀察紀錄表 (觀課人員填寫)</div>
+      <table>
+        <tr>
+          <td style="width: 15%; background: #f2f2f2; font-weight: bold;">授課教師</td>
+          <td style="width: 35%;"></td>
+          <td style="width: 15%; background: #f2f2f2; font-weight: bold;">觀課人員</td>
+          <td style="width: 35%;"></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">授課領域/科目</td>
+          <td></td>
+          <td style="background: #f2f2f2; font-weight: bold;">觀課班級/節次</td>
+          <td>____班 / 第____節</td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">單元名稱</td>
+          <td colspan="3"></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold; text-align: center;">觀察向度</td>
+          <td colspan="2" style="background: #f2f2f2; font-weight: bold; text-align: center;">具體課堂觀察事實描述 (學生學習表現與教師引導)</td>
+          <td style="background: #f2f2f2; font-weight: bold; text-align: center; width: 25%;">省思與建議回饋</td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold;">一、學生學習表現<br><small>(專注投入、小組互動、迷思概念等)</small></td>
+          <td colspan="2" style="height: 140px;"></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold;">二、教師教學策略<br><small>(提問設計、數位輔具運用、個別差異指導等)</small></td>
+          <td colspan="2" style="height: 140px;"></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold;">三、學習氣氛與環境<br><small>(班級常規、師生互動氛圍等)</small></td>
+          <td colspan="2" style="height: 100px;"></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">觀課人員綜合回饋與心得</td>
+          <td colspan="3" style="height: 100px;"></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">觀課人員簽章</td>
+          <td colspan="3">簽章：________________________　　觀課日期：____年____月____日</td>
+        </tr>
+      </table>
+    `;
+  } else if (type === 'post') {
+    fileName = "115學年度新北市中山國小_表件三_教學省思與共同議課紀錄表.doc";
+    html = `
+      <div class="header-title">新北市板橋區中山國民小學 115 學年度教師公開授課</div>
+      <div class="sub-title">【表件三】教學省思心得與共同議課紀錄表 (授課人員填寫)</div>
+      <table>
+        <tr>
+          <td style="width: 15%; background: #f2f2f2; font-weight: bold;">授課教師</td>
+          <td style="width: 35%;"></td>
+          <td style="width: 15%; background: #f2f2f2; font-weight: bold;">議課主持人</td>
+          <td style="width: 35%;"></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">授課領域/班級</td>
+          <td></td>
+          <td style="background: #f2f2f2; font-weight: bold;">議課時間與地點</td>
+          <td>____年____月____日 / </td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">共同議課人員</td>
+          <td colspan="3" style="height: 50px;"></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">授課教師自我教學省思</td>
+          <td colspan="3" style="height: 140px;">
+            1. 本次課堂教學目標達成情形：<br><br>
+            2. 學生課堂學習成效與亮點：<br><br>
+            3. 遇見之困難或日後精進方向：
+          </td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">觀課教師專業回饋摘述</td>
+          <td colspan="3" style="height: 140px;"></td>
+        </tr>
+        <tr>
+          <td style="background: #f2f2f2; font-weight: bold;">公開授課與議課照片黏貼紀錄 (請貼 2~4 張照片並附簡述)</td>
+          <td colspan="3" style="height: 240px; text-align: center; vertical-align: middle; color: #888;">
+            【照片一：課堂教學活動/共備照片】　　　　　　【照片二：學生學習/分組操作照片】<br><br><br><br>
+            【照片三：觀課教師觀察視角】　　　　　　　【照片四：議課研討與回饋照片】
+          </td>
+        </tr>
+      </table>
+    `;
+  }
+
+  const docWrapper = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset='utf-8'>
+      <title>${fileName}</title>
+      <style>
+        body { font-family: '標楷體', 'BiauKai', 'DFKai-SB', 'Times New Roman', serif; line-height: 1.6; font-size: 12pt; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        td, th { border: 1px solid #000; padding: 7px 10px; }
+        .header-title { text-align: center; font-size: 16pt; font-weight: bold; margin-bottom: 4px; }
+        .sub-title { text-align: center; font-size: 13pt; font-weight: bold; margin-bottom: 12px; }
+      </style>
+    </head>
+    <body>
+      ${html}
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob([docWrapper], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
