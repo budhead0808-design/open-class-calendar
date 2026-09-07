@@ -65,6 +65,7 @@ class DataStore {
     this.storageSettingsKey = 'OPEN_CLASS_SETTINGS_V2';
     this.storageSnapshotsKey = 'OPEN_CLASS_DAILY_SNAPSHOTS_V1';
     this.storageGasUrlKey = 'OPEN_CLASS_GAS_URL';
+    this.storageDeletedIdsKey = 'OPEN_CLASS_DELETED_IDS_V1';
     this.currentPortal = 'frontend'; // 'frontend' | 'backend'
     this.adminSubView = 'dashboard';
     this.currentDate = new Date();
@@ -85,7 +86,26 @@ class DataStore {
     }, 100);
   }
 
+  getDeletedIds() {
+    try {
+      const raw = localStorage.getItem(this.storageDeletedIdsKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  addDeletedId(id) {
+    if (!id) return;
+    const list = this.getDeletedIds();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem(this.storageDeletedIdsKey, JSON.stringify(list));
+    }
+  }
+
   loadData() {
+    const deletedIds = this.getDeletedIds();
     const keysToTry = ['OPEN_CLASS_CALENDAR_DATA_V3', 'OPEN_CLASS_CALENDAR_DATA_V2', 'OPEN_CLASS_CALENDAR_DATA_V1'];
     for (const key of keysToTry) {
       const raw = localStorage.getItem(key);
@@ -93,19 +113,21 @@ class DataStore {
         try {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const hasLuo = parsed.some(item => item.teacher && item.teacher.includes('羅任鎗'));
-            if (!hasLuo) {
+            const filtered = parsed.filter(item => !deletedIds.includes(item.id));
+            const hasLuo = filtered.some(item => item.teacher && item.teacher.includes('羅任鎗'));
+            if (!hasLuo && !deletedIds.some(id => id.includes('608903'))) {
               const luoEntry = DEFAULT_OPEN_CLASSES.find(i => i.teacher === '羅任鎗');
-              if (luoEntry) parsed.push(luoEntry);
+              if (luoEntry && !deletedIds.includes(luoEntry.id)) filtered.push(luoEntry);
             }
-            this.saveData(parsed);
-            return parsed;
+            this.saveData(filtered);
+            return filtered;
           }
         } catch (e) { console.error('Data migration error', e); }
       }
     }
-    this.saveData(DEFAULT_OPEN_CLASSES);
-    return [...DEFAULT_OPEN_CLASSES];
+    const initial = DEFAULT_OPEN_CLASSES.filter(item => !deletedIds.includes(item.id));
+    this.saveData(initial);
+    return [...initial];
   }
 
   saveData(data = this.openClasses) {
@@ -276,11 +298,22 @@ class DataStore {
     const idx = this.openClasses.findIndex(item => item.id === id);
     if (idx !== -1) {
       const removed = this.openClasses.splice(idx, 1)[0];
+      this.addDeletedId(id);
       this.saveData();
+      // 同時發送 deleteOpenClass 與 syncAll，確保舊版與新版 GAS 試算表均被清空重寫，徹底移除該筆紀錄
       this.pushToCloud('deleteOpenClass', null, { id: id });
+      this.pushToCloud('syncAll', null, { openClasses: this.openClasses, settings: this.settings });
       return removed;
     }
     return null;
+  }
+
+  batchDelete(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    ids.forEach(id => this.addDeletedId(id));
+    this.openClasses = this.openClasses.filter(item => !ids.includes(item.id));
+    this.saveData();
+    this.pushToCloud('syncAll', null, { openClasses: this.openClasses, settings: this.settings });
   }
 
   registerObserver(id, observerData) {
@@ -375,12 +408,24 @@ class DataStore {
       const json = await res.json();
 
       if (json && json.status === 'success') {
-        if (Array.isArray(json.openClasses) && json.openClasses.length > 0) {
-          this.openClasses = json.openClasses;
-          localStorage.setItem(this.storageDataKey, JSON.stringify(this.openClasses));
-        } else if (Array.isArray(json.openClasses) && json.openClasses.length === 0 && this.openClasses.length > 0) {
-          // 若雲端試算表剛建立還是空的，自動將現有資料同步初始化至雲端試算表！
-          this.pushToCloud('syncAll', null, { openClasses: this.openClasses, settings: this.settings });
+        if (Array.isArray(json.openClasses)) {
+          // 防禦性過濾：嚴格剔除所有已刪除名冊中的幽靈資料
+          const deletedIds = this.getDeletedIds();
+          const originalLen = json.openClasses.length;
+          const filtered = json.openClasses.filter(item => !deletedIds.includes(item.id));
+
+          // 若雲端試算表還殘留已刪除的幽靈資料，自動透過 syncAll 幫雲端試算表徹底清除！
+          if (filtered.length < originalLen) {
+            this.pushToCloud('syncAll', null, { openClasses: filtered, settings: this.settings });
+          }
+
+          if (filtered.length > 0) {
+            this.openClasses = filtered;
+            localStorage.setItem(this.storageDataKey, JSON.stringify(this.openClasses));
+          } else if (filtered.length === 0 && this.openClasses.length > 0 && deletedIds.length === 0) {
+            // 若雲端試算表剛建立還是空的，自動將現有資料同步初始化至雲端試算表！
+            this.pushToCloud('syncAll', null, { openClasses: this.openClasses, settings: this.settings });
+          }
         }
 
         if (json.settings && json.settings.siteTitle) {
@@ -791,11 +836,11 @@ function initBackendTabs() {
     batchDeleteBtn.addEventListener('click', () => {
       const selected = getSelectedPendingIds();
       if (selected.length === 0) return alert('請先勾選欲刪除的公開授課案件');
-      if (!confirm(`確定要批次刪除所勾選的 ${selected.length} 筆公開授課申請嗎？\n\n⚠️ 刪除後將同步從 Google 雲端試算表移除，請問是否確定刪除？`)) {
+      if (!confirm(`確定要批次刪除所勾選的 ${selected.length} 筆公開授課申請嗎？\n\n⚠️ 刪除後將同步從 Google 雲端試算表徹底移除，請問是否確定刪除？`)) {
         return;
       }
-      selected.forEach(id => store.deleteEntry(id));
-      alert(`已成功刪除 ${selected.length} 筆公開授課申請！`);
+      store.batchDelete(selected);
+      alert(`已成功刪除 ${selected.length} 筆公開授課申請，並已同步更新至雲端！`);
       renderBackendPortal();
     });
   }
@@ -1258,7 +1303,7 @@ window.adminDeleteClass = function(id) {
     return;
   }
   store.deleteEntry(id);
-  alert(`已成功刪除【${target.teacher} 老師】的該筆公開授課場次！`);
+  alert(`已成功刪除【${target.teacher} 老師】的該筆公開授課場次，並已同步更新至雲端 Google 試算表！`);
   renderCurrentPortal();
 };
 
