@@ -785,6 +785,20 @@ function initBackendTabs() {
     alert(`成功公告 ${selected.length} 筆案件至全校公開授課行事曆！`);
     renderBackendPortal();
   });
+
+  const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+  if (batchDeleteBtn) {
+    batchDeleteBtn.addEventListener('click', () => {
+      const selected = getSelectedPendingIds();
+      if (selected.length === 0) return alert('請先勾選欲刪除的公開授課案件');
+      if (!confirm(`確定要批次刪除所勾選的 ${selected.length} 筆公開授課申請嗎？\n\n⚠️ 刪除後將同步從 Google 雲端試算表移除，請問是否確定刪除？`)) {
+        return;
+      }
+      selected.forEach(id => store.deleteEntry(id));
+      alert(`已成功刪除 ${selected.length} 筆公開授課申請！`);
+      renderBackendPortal();
+    });
+  }
 }
 
 // 標題與密碼修改表單處理
@@ -1118,10 +1132,11 @@ function renderAdminDashboard() {
       <td><span class="badge badge-type-${getOpenTypeBadgeClass(item.openType)}">${item.openType}</span></td>
       <td>${item.createdDate || '-'}</td>
       <td><span class="badge badge-${getStatusBadgeClass(item.status)}">${item.status}</span></td>
-      <td>
-        <button class="btn btn-sm btn-sketch-success" onclick="adminApproveItem('${item.id}')">核准</button>
-        <button class="btn btn-sm btn-sketch-primary" onclick="adminPublishItem('${item.id}')">發布公告</button>
-        <button class="btn btn-sm btn-sketch-outline text-danger" onclick="adminReturnItem('${item.id}')">退回</button>
+      <td style="white-space: nowrap;">
+        <button class="btn btn-sm btn-sketch-success" onclick="adminApproveItem('${item.id}')" title="核准此申請">核准</button>
+        <button class="btn btn-sm btn-sketch-primary" onclick="adminPublishItem('${item.id}')" title="發布公告至全校行事曆">發布公告</button>
+        <button class="btn btn-sm btn-sketch-outline text-danger" onclick="adminReturnItem('${item.id}')" title="退回教師修正">退回</button>
+        <button class="btn btn-sm btn-sketch-outline text-danger" onclick="adminDeleteClass('${item.id}')" title="刪除此公開課申請（清理重複或無效場次）"><i class="fa-solid fa-trash-can"></i> 刪除</button>
       </td>
     `;
     tbody.appendChild(tr);
