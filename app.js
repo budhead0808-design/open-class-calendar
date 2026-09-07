@@ -272,6 +272,17 @@ class DataStore {
     }
   }
 
+  deleteEntry(id) {
+    const idx = this.openClasses.findIndex(item => item.id === id);
+    if (idx !== -1) {
+      const removed = this.openClasses.splice(idx, 1)[0];
+      this.saveData();
+      this.pushToCloud('deleteOpenClass', null, { id: id });
+      return removed;
+    }
+    return null;
+  }
+
   registerObserver(id, observerData) {
     const target = this.openClasses.find(item => item.id === id);
     if (target) {
@@ -1212,14 +1223,29 @@ function renderAdminMasterTable() {
         <button class="btn btn-sm btn-sketch-primary" style="margin-right: 4px;" onclick="openDetailModal('${item.id}')" title="管理本場次觀課教師名單與重複報名">
           <i class="fa-solid fa-users"></i> 觀課(${regCount}/${maxObs})
         </button>
-        <button class="btn btn-sm btn-sketch-outline" onclick="openFormModal('${item.id}')">
+        <button class="btn btn-sm btn-sketch-outline" style="margin-right: 4px;" onclick="openFormModal('${item.id}')" title="編輯此場次公開授課內容">
           <i class="fa-solid fa-pen"></i> 編輯
+        </button>
+        <button class="btn btn-sm btn-sketch-outline text-danger" onclick="adminDeleteClass('${item.id}')" title="刪除此筆公開課場次（清理重複填報場次）">
+          <i class="fa-solid fa-trash-can"></i> 刪除
         </button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 }
+
+// 教務處管理後台刪除公開課場次
+window.adminDeleteClass = function(id) {
+  const target = store.getAll().find(i => i.id === id);
+  if (!target) return;
+  if (!confirm(`確定要刪除【${target.teacher} 老師】的公開授課紀錄嗎？\n\n場次：${target.className}班 / ${target.subject} - ${target.unit}\n日期：${formatDateChinese(target.date)}\n狀態：${target.status}\n\n⚠️ 刪除後將同步從雲端 Google 試算表移除，請問是否確定刪除？`)) {
+    return;
+  }
+  store.deleteEntry(id);
+  alert(`已成功刪除【${target.teacher} 老師】的該筆公開授課場次！`);
+  renderCurrentPortal();
+};
 
 // ==========================================================================
 // 5. Calendar Render Engine
@@ -1399,6 +1425,32 @@ function initModals() {
     saveOpenClassFromForm('草稿');
   });
 
+  // 教師姓名即時防重複填寫驗證
+  const teacherInput = document.getElementById('formTeacher');
+  const emailInput = document.getElementById('formEmail');
+  const warningEl = document.getElementById('teacherDuplicateWarning');
+
+  function validateTeacherDuplicate() {
+    if (!teacherInput) return;
+    const editId = document.getElementById('formEntryId') ? document.getElementById('formEntryId').value : null;
+    const existing = checkTeacherAlreadyRegistered(teacherInput.value, emailInput ? emailInput.value : '', editId);
+    if (existing && warningEl) {
+      warningEl.style.display = 'block';
+      warningEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <strong>你已經填寫過申請</strong>（${existing.teacher} 老師於 ${formatDateChinese(existing.date)} 已有「${existing.subject} - ${existing.unit}」）`;
+    } else if (warningEl) {
+      warningEl.style.display = 'none';
+    }
+  }
+
+  if (teacherInput) {
+    teacherInput.addEventListener('input', validateTeacherDuplicate);
+    teacherInput.addEventListener('change', validateTeacherDuplicate);
+  }
+  if (emailInput) {
+    emailInput.addEventListener('input', validateTeacherDuplicate);
+    emailInput.addEventListener('change', validateTeacherDuplicate);
+  }
+
   // 建議填列欄位展開/收合控制
   const toggleBtn = document.getElementById('toggleOptionalFieldsBtn');
   const collapseBtn = document.getElementById('collapseOptionalBtn');
@@ -1433,12 +1485,37 @@ function initModals() {
   }
 }
 
+// 檢查教師是否已填寫過公開授課申請
+function checkTeacherAlreadyRegistered(teacherName, teacherEmail, currentId = null) {
+  const name = (teacherName || '').trim().replace(/\s+/g, '');
+  const email = (teacherEmail || '').trim().toLowerCase();
+  if (!name && !email) return null;
+
+  return store.getAll().find(item => {
+    if (currentId && item.id === currentId) return false;
+
+    const itemTeacher = (item.teacher || '').trim().replace(/\s+/g, '');
+    if (name && itemTeacher && itemTeacher === name) {
+      return true;
+    }
+
+    const itemEmail = (item.teacherEmail || item.email || '').trim().toLowerCase();
+    if (email && itemEmail && itemEmail === email) {
+      return true;
+    }
+
+    return false;
+  }) || null;
+}
+
 function openFormModal(editId = null) {
   const modal = document.getElementById('openClassModal');
   const title = document.getElementById('modalFormTitle');
   const form = document.getElementById('openClassForm');
   const optionalSection = document.getElementById('optionalFieldsSection');
   const optionalBtnText = document.getElementById('optionalBtnText');
+  const warningEl = document.getElementById('teacherDuplicateWarning');
+  if (warningEl) warningEl.style.display = 'none';
   form.reset();
 
   if (editId) {
@@ -1493,12 +1570,27 @@ function openFormModal(editId = null) {
 
 function saveOpenClassFromForm(targetStatus) {
   const id = document.getElementById('formEntryId').value;
+  const teacherVal = document.getElementById('formTeacher').value;
+  const emailVal = document.getElementById('formEmail').value;
+
+  // 防呆：每位教師限填寫一次公開授課申請
+  const existing = checkTeacherAlreadyRegistered(teacherVal, emailVal, id);
+  if (existing) {
+    if (store.currentPortal === 'frontend') {
+      alert('你已經填寫過申請');
+      return;
+    } else {
+      const ok = confirm(`【教務處管理者提醒】\n你已經填寫過申請（${existing.teacher} 老師於 ${formatDateChinese(existing.date)} 已有「${existing.subject} - ${existing.unit}」場次）。\n\n請問是否仍要強制代填新增？（如欲修改原資料，建議直接點選「編輯」）`);
+      if (!ok) return;
+    }
+  }
+
   const entryData = {
     date: document.getElementById('formDate').value,
     period: document.getElementById('formPeriod').value,
     className: document.getElementById('formClassName').value,
-    teacher: document.getElementById('formTeacher').value,
-    teacherEmail: document.getElementById('formEmail').value.trim(),
+    teacher: teacherVal.trim(),
+    teacherEmail: emailVal.trim(),
     subject: document.getElementById('formSubject').value,
     unit: document.getElementById('formUnit').value,
     openType: document.getElementById('formOpenType').value,

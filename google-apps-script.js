@@ -53,6 +53,8 @@ function doPost(e) {
       updateAllSettings(sheetSettings, payload.settings);
     } else if (action === "batchUpdateStatus") {
       batchUpdateStatus(sheetData, payload.ids, payload.status);
+    } else if (action === "deleteOpenClass") {
+      deleteOpenClass(sheetData, payload.id);
     } else if (action === "syncAll") {
       syncAllData(sheetData, sheetSettings, payload.openClasses, payload.settings);
     } else if (action === "sendReturnEmail") {
@@ -183,6 +185,16 @@ function updateOpenClass(sheet, id, updatedData) {
           sheet.getRange(i + 1, colIdx + 1).setValue(val);
         }
       }
+      break;
+    }
+  }
+}
+
+function deleteOpenClass(sheet, id) {
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(id)) {
+      sheet.deleteRow(i + 1);
       break;
     }
   }
