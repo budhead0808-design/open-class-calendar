@@ -1444,6 +1444,133 @@ window.closeDownloadDocsModal = function() {
   }
 };
 
+// 查詢我的公開授課申請與草稿 Modal
+window.openMyApplicationsModal = function(defaultKeyword = '') {
+  const modal = document.getElementById('myApplicationsModal');
+  if (!modal) return;
+  const input = document.getElementById('myAppSearchInput');
+  if (input) input.value = defaultKeyword;
+  modal.classList.add('active');
+  searchMyApplications();
+};
+
+window.closeMyApplicationsModal = function() {
+  const modal = document.getElementById('myApplicationsModal');
+  if (modal) modal.classList.remove('active');
+};
+
+window.loadDraftIntoForm = function(id) {
+  closeMyApplicationsModal();
+  openFormModal(id);
+};
+
+window.searchMyApplications = function() {
+  const input = document.getElementById('myAppSearchInput');
+  const container = document.getElementById('myAppResultContainer');
+  if (!container) return;
+
+  const keyword = input ? input.value.trim().toLowerCase() : '';
+  const all = store.getAll();
+
+  let matched = [];
+  if (keyword) {
+    matched = all.filter(item => {
+      const t = (item.teacher || '').toLowerCase();
+      const em = (item.teacherEmail || item.email || '').toLowerCase();
+      return t.includes(keyword) || em.includes(keyword);
+    });
+  } else {
+    // 預設列出目前所有的草稿與需修正項目，方便老師一進來就能看到
+    matched = all.filter(item => item.status === '草稿' || item.status === '需修正');
+  }
+
+  if (matched.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
+        <i class="fa-solid fa-folder-open" style="font-size: 2rem; margin-bottom: 0.5rem; color: #94a3b8; display: block;"></i>
+        ${keyword ? `查無【${keyword}】老師的申請或草稿紀錄。<br><small style="color:#64748b;">請確認姓名是否填寫正確，或點擊「教師線上登記公開課」填寫新申請。</small>` : '目前尚無儲存中的草稿或退回需修正案件。<br><small style="color:#64748b;">請在上方搜尋欄輸入您的教師姓名進行查詢。</small>'}
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = '';
+  matched.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'sketch-card';
+    
+    let statusBadge = '';
+    let actionBtn = '';
+    let cardBg = '#ffffff';
+    let borderColor = 'var(--ink-border)';
+
+    if (item.status === '草稿') {
+      cardBg = '#fefce8';
+      borderColor = '#eab308';
+      statusBadge = '<span class="badge badge-draft" style="font-size: 0.82rem; background:#fef08a; color:#854d0e; border:1px solid #eab308;"><i class="fa-solid fa-floppy-disk"></i> 未送出草稿</span>';
+      actionBtn = `
+        <button type="button" class="btn btn-sm btn-sketch-success" onclick="loadDraftIntoForm('${item.id}')" style="font-weight: 900; background:#16a34a; color:white;">
+          <i class="fa-solid fa-file-pen"></i> 繼續填寫 / 送出送審
+        </button>
+      `;
+    } else if (item.status === '需修正') {
+      cardBg = '#fef2f2';
+      borderColor = '#ef4444';
+      statusBadge = '<span class="badge text-danger" style="background:#fee2e2; border:1px solid #f87171; font-size:0.82rem; color:#991b1b;"><i class="fa-solid fa-triangle-exclamation"></i> 需退回修正</span>';
+      actionBtn = `
+        <button type="button" class="btn btn-sm btn-sketch-primary" onclick="loadDraftIntoForm('${item.id}')" style="font-weight: 900;">
+          <i class="fa-solid fa-pen-to-square"></i> 依意見修正並送審
+        </button>
+      `;
+    } else if (item.status === '待審核') {
+      cardBg = '#f0f9ff';
+      borderColor = '#0284c7';
+      statusBadge = '<span class="badge badge-draft" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.82rem;"><i class="fa-solid fa-clock"></i> 教務處審核中</span>';
+      actionBtn = `
+        <button type="button" class="btn btn-sm btn-sketch-outline" onclick="loadDraftIntoForm('${item.id}')">
+          <i class="fa-solid fa-eye"></i> 檢視內容
+        </button>
+      `;
+    } else {
+      cardBg = '#f0fdf4';
+      borderColor = '#16a34a';
+      statusBadge = `<span class="badge badge-approved" style="font-size:0.82rem;"><i class="fa-solid fa-circle-check"></i> ${item.status}</span>`;
+      actionBtn = `
+        <button type="button" class="btn btn-sm btn-sketch-outline" onclick="loadDraftIntoForm('${item.id}')">
+          <i class="fa-solid fa-eye"></i> 檢視明細
+        </button>
+      `;
+    }
+
+    card.style.cssText = `padding: 0.85rem 1rem; background: ${cardBg}; border: 2px solid ${borderColor}; border-radius: 8px; margin-bottom: 6px;`;
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+        <div>
+          <strong style="font-size: 1rem; color: var(--primary);">${item.teacher} 老師</strong>
+          <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 6px;">(${item.className} 班 / ${item.subject})</span>
+        </div>
+        <div>${statusBadge}</div>
+      </div>
+      <div style="font-size: 0.92rem; margin-bottom: 6px; font-weight: 700; color: var(--text-main);">
+        單元：${item.unit}
+      </div>
+      <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
+        <span><i class="fa-regular fa-calendar"></i> 預計日期：${formatDateChinese(item.date)} (${item.period})</span>
+        ${item.location ? `<span><i class="fa-solid fa-location-dot"></i> 地點：${item.location}</span>` : ''}
+      </div>
+      ${item.revisionComment ? `
+        <div style="background: white; border: 1.5px dashed #ef4444; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem; color: #991b1b; line-height: 1.4;">
+          <strong>教務處退回意見：</strong>${item.revisionComment}
+        </div>
+      ` : ''}
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+        ${actionBtn}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+};
+
 function initModals() {
   const openClassModal = document.getElementById('openClassModal');
   const detailModal = document.getElementById('detailModal');
@@ -1473,6 +1600,16 @@ function initModals() {
     });
   }
 
+  const myAppSearchInput = document.getElementById('myAppSearchInput');
+  if (myAppSearchInput) {
+    myAppSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        window.searchMyApplications();
+      }
+    });
+  }
+
   document.getElementById('closeFormModalBtn').addEventListener('click', () => openClassModal.classList.remove('active'));
   document.getElementById('closeDetailModalBtn').addEventListener('click', () => detailModal.classList.remove('active'));
 
@@ -1494,9 +1631,46 @@ function initModals() {
     if (!teacherInput) return;
     const editId = document.getElementById('formEntryId') ? document.getElementById('formEntryId').value : null;
     const existing = checkTeacherAlreadyRegistered(teacherInput.value, emailInput ? emailInput.value : '', editId);
+
     if (existing && warningEl) {
       warningEl.style.display = 'block';
-      warningEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <strong>你已經填寫過申請</strong>（${existing.teacher} 老師於 ${formatDateChinese(existing.date)} 已有「${existing.subject} - ${existing.unit}」）`;
+
+      if (existing.status === '草稿') {
+        warningEl.style.background = '#fefce8';
+        warningEl.style.borderColor = '#ca8a04';
+        warningEl.style.color = '#854d0e';
+        warningEl.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <i class="fa-solid fa-floppy-disk" style="color: #ca8a04; margin-right: 4px;"></i>
+              <strong>偵測到您先前已存有【草稿】</strong>（${existing.subject} - ${existing.unit}）
+            </div>
+            <button type="button" class="btn btn-sm btn-sketch-primary" style="padding: 2px 10px; font-size: 0.82rem; font-weight: 900; background: #2563eb; color: white;" onclick="loadDraftIntoForm('${existing.id}')">
+              <i class="fa-solid fa-file-pen"></i> 直接載入此草稿繼續填寫
+            </button>
+          </div>
+        `;
+      } else if (existing.status === '需修正') {
+        warningEl.style.background = '#fef2f2';
+        warningEl.style.borderColor = '#f87171';
+        warningEl.style.color = '#991b1b';
+        warningEl.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <i class="fa-solid fa-triangle-exclamation" style="color: #dc2626; margin-right: 4px;"></i>
+              <strong>教務處退回需修正：</strong>${existing.revisionComment || '請修正後重新送審'}
+            </div>
+            <button type="button" class="btn btn-sm btn-sketch-primary" style="padding: 2px 10px; font-size: 0.82rem; font-weight: 900; background: #e11d48; color: white;" onclick="loadDraftIntoForm('${existing.id}')">
+              <i class="fa-solid fa-pen-to-square"></i> 載入進行修正
+            </button>
+          </div>
+        `;
+      } else {
+        warningEl.style.background = '#fef2f2';
+        warningEl.style.borderColor = '#f87171';
+        warningEl.style.color = '#dc2626';
+        warningEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <strong>你已經填寫過申請</strong>（${existing.teacher} 老師於 ${formatDateChinese(existing.date)} 已登記「${existing.subject} - ${existing.unit}」，狀態：${existing.status}）`;
+      }
     } else if (warningEl) {
       warningEl.style.display = 'none';
     }
@@ -1579,9 +1753,16 @@ function openFormModal(editId = null) {
   form.reset();
 
   if (editId) {
-    title.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> 編輯公開授課登記 (教育局 11 欄位)`;
     const target = store.getAll().find(i => i.id === editId);
     if (target) {
+      if (target.status === '草稿') {
+        title.innerHTML = `<i class="fa-solid fa-file-pen" style="color: #ca8a04;"></i> 繼續填寫公開授課草稿 (可儲存草稿或直接送審)`;
+      } else if (target.status === '需修正') {
+        title.innerHTML = `<i class="fa-solid fa-pen-to-square" style="color: #e11d48;"></i> 依意見修正公開授課申請 (修正後請送審)`;
+      } else {
+        title.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> 編輯公開授課登記 (教育局 11 欄位)`;
+      }
+
       document.getElementById('formEntryId').value = target.id;
       document.getElementById('formDate').value = normalizeDateIso(target.date);
       document.getElementById('formPeriod').value = target.period;
@@ -1629,19 +1810,36 @@ function openFormModal(editId = null) {
 }
 
 function saveOpenClassFromForm(targetStatus) {
-  const id = document.getElementById('formEntryId').value;
+  let id = document.getElementById('formEntryId').value;
   const teacherVal = document.getElementById('formTeacher').value;
   const emailVal = document.getElementById('formEmail').value;
 
   // 防呆：每位教師限填寫一次公開授課申請
   const existing = checkTeacherAlreadyRegistered(teacherVal, emailVal, id);
   if (existing) {
-    if (store.currentPortal === 'frontend') {
-      alert('你已經填寫過申請');
-      return;
+    if (!id && existing.status === '草稿') {
+      const actionText = targetStatus === '草稿' ? '儲存更新至該筆草稿' : '更新該筆草稿並正式送出審核';
+      if (confirm(`偵測到您先前已存有草稿（單元：${existing.subject} - ${existing.unit}）。\n\n是否直接將本次填寫內容${actionText}？`)) {
+        id = existing.id;
+        document.getElementById('formEntryId').value = existing.id;
+      } else {
+        return;
+      }
+    } else if (!id && existing.status === '需修正') {
+      if (confirm(`偵測到您先前有教務處退回需修正之案件（單元：${existing.subject} - ${existing.unit}）。\n\n是否將本次填寫內容更新至該案件並送出審核？`)) {
+        id = existing.id;
+        document.getElementById('formEntryId').value = existing.id;
+      } else {
+        return;
+      }
     } else {
-      const ok = confirm(`【教務處管理者提醒】\n你已經填寫過申請（${existing.teacher} 老師於 ${formatDateChinese(existing.date)} 已有「${existing.subject} - ${existing.unit}」場次）。\n\n請問是否仍要強制代填新增？（如欲修改原資料，建議直接點選「編輯」）`);
-      if (!ok) return;
+      if (store.currentPortal === 'frontend') {
+        alert('你已經填寫過申請');
+        return;
+      } else {
+        const ok = confirm(`【教務處管理者提醒】\n你已經填寫過申請（${existing.teacher} 老師於 ${formatDateChinese(existing.date)} 已有「${existing.subject} - ${existing.unit}」場次）。\n\n請問是否仍要強制代填新增？（如欲修改原資料，建議直接點選「編輯」）`);
+        if (!ok) return;
+      }
     }
   }
 
@@ -1667,10 +1865,10 @@ function saveOpenClassFromForm(targetStatus) {
 
   if (id) {
     store.updateEntry(id, entryData);
-    alert('已成功更新公開授課資料！');
+    alert(targetStatus === '草稿' ? '💾 已成功更新公開授課草稿！' : '🎉 已成功送出申請，等待教務處審核！');
   } else {
     store.addEntry(entryData);
-    alert(targetStatus === '草稿' ? '已成功儲存草稿！' : '已成功送出申請，等待教務處審核！');
+    alert(targetStatus === '草稿' ? '💾 已成功儲存草稿！' : '🎉 已成功送出申請，等待教務處審核！');
   }
 
   document.getElementById('openClassModal').classList.remove('active');
