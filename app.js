@@ -89,9 +89,15 @@ class DataStore {
   getDeletedIds() {
     try {
       const raw = localStorage.getItem(this.storageDeletedIdsKey);
-      return raw ? JSON.parse(raw) : [];
+      const list = raw ? JSON.parse(raw) : [];
+      // 確保已知被刪除的歷史舊紀錄不被任何本機快取復原
+      const permanentDeleted = ['OC-577251'];
+      permanentDeleted.forEach(id => {
+        if (!list.includes(id)) list.push(id);
+      });
+      return list;
     } catch (e) {
-      return [];
+      return ['OC-577251'];
     }
   }
 
@@ -1542,20 +1548,29 @@ window.searchMyApplications = function() {
       `;
     }
 
+    let deleteBtn = '';
+    if (item.status === '草稿' || item.status === '需修正') {
+      deleteBtn = `
+        <button type="button" class="btn btn-sm btn-sketch-danger" onclick="deleteMyDraft('${item.id}')" style="font-weight: 700; background: #fee2e2; color: #dc2626; border: 1.5px solid #f87171;" title="刪除此筆草稿或紀錄">
+          <i class="fa-solid fa-trash-can"></i> 刪除草稿
+        </button>
+      `;
+    }
+
     card.style.cssText = `padding: 0.85rem 1rem; background: ${cardBg}; border: 2px solid ${borderColor}; border-radius: 8px; margin-bottom: 6px;`;
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
         <div>
-          <strong style="font-size: 1rem; color: var(--primary);">${item.teacher} 老師</strong>
-          <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 6px;">(${item.className} 班 / ${item.subject})</span>
+          <strong style="font-size: 1rem; color: var(--primary);">${item.teacher || '（未具名）'} 老師</strong>
+          <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 6px;">(${item.className || '未指定'} 班 / ${item.subject || '未指定'})</span>
         </div>
         <div>${statusBadge}</div>
       </div>
       <div style="font-size: 0.92rem; margin-bottom: 6px; font-weight: 700; color: var(--text-main);">
-        單元：${item.unit}
+        單元：${item.unit || '（未填寫單元）'}
       </div>
       <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
-        <span><i class="fa-regular fa-calendar"></i> 預計日期：${formatDateChinese(item.date)} (${item.period})</span>
+        <span><i class="fa-regular fa-calendar"></i> 預計日期：${formatDateChinese(item.date)} (${item.period || '未指定節次'})</span>
         ${item.location ? `<span><i class="fa-solid fa-location-dot"></i> 地點：${item.location}</span>` : ''}
       </div>
       ${item.revisionComment ? `
@@ -1563,12 +1578,25 @@ window.searchMyApplications = function() {
           <strong>教務處退回意見：</strong>${item.revisionComment}
         </div>
       ` : ''}
-      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+        ${deleteBtn}
         ${actionBtn}
       </div>
     `;
     container.appendChild(card);
   });
+};
+
+window.deleteMyDraft = function(id) {
+  const target = store.getAll().find(i => i.id === id);
+  if (!target) return;
+  const teacherName = target.teacher || '此筆空白';
+  if (!confirm(`確定要刪除【${teacherName}】的此筆草稿/紀錄嗎？\n\n單元：${target.unit || '未填寫'}\n狀態：${target.status}\n\n⚠️ 刪除後將同步從雲端資料庫徹底移除且無法復原。`)) {
+    return;
+  }
+  store.deleteEntry(id);
+  alert(`已成功刪除【${teacherName}】的草稿紀錄，並同步更新雲端資料庫！`);
+  window.searchMyApplications();
 };
 
 function initModals() {
