@@ -157,6 +157,9 @@ class DataStore {
       post: { title: '教學省思心得與共同議課紀錄表', desc: '授課人員填寫・含議課照片紀錄與專業回饋研討', fileName: null, fileData: null }
     };
 
+    let registrationClosed = true; // 預設目前開啟整理模式 (關閉登記)
+    let maintenanceMessage = '目前教務處正在進行全校公開授課資料彙整、排程調度與資料確認，暫停受理教師線上登記。待整理完成後將重新開放，敬請見諒！';
+
     // 優先讀取已修改的最新密碼與表件設定 (V2)
     const rawV2 = localStorage.getItem('OPEN_CLASS_SETTINGS_V2');
     if (rawV2) {
@@ -167,6 +170,8 @@ class DataStore {
           if (parsed.docDriveUrl !== undefined) docDriveUrl = parsed.docDriveUrl;
           if (parsed.docDriveTitle) docDriveTitle = parsed.docDriveTitle;
           if (parsed.docNoticeText !== undefined) docNoticeText = parsed.docNoticeText;
+          if (parsed.registrationClosed !== undefined) registrationClosed = parsed.registrationClosed;
+          if (parsed.maintenanceMessage) maintenanceMessage = parsed.maintenanceMessage;
           if (Array.isArray(parsed.customDocs)) customDocs = parsed.customDocs;
           if (parsed.standardDocs) standardDocs = { ...standardDocs, ...parsed.standardDocs };
         }
@@ -190,6 +195,8 @@ class DataStore {
       docDriveUrl: docDriveUrl,
       docDriveTitle: docDriveTitle,
       docNoticeText: docNoticeText,
+      registrationClosed: registrationClosed,
+      maintenanceMessage: maintenanceMessage,
       customDocs: customDocs,
       standardDocs: standardDocs
     };
@@ -449,11 +456,15 @@ class DataStore {
               json.settings.standardDocs = null;
             }
           }
+          if (json.settings.registrationClosed !== undefined) {
+            json.settings.registrationClosed = (json.settings.registrationClosed === true || json.settings.registrationClosed === 'true');
+          }
           this.settings = { ...this.settings, ...json.settings };
           localStorage.setItem(this.storageSettingsKey, JSON.stringify(this.settings));
         }
         this.updateCloudStatusBadge();
         applySystemSettings();
+        if (typeof updateRegistrationStatusUI === 'function') updateRegistrationStatusUI();
         renderCurrentPortal();
         if (showToast) {
           alert('🟢 雲端同步成功！已載入最新公開授課資料與密碼設定。');
@@ -556,6 +567,121 @@ function applySystemSettings() {
   renderDownloadDocsModal();
   renderAdminStandardDocsList();
   renderAdminCustomDocsList();
+  updateRegistrationStatusUI();
+}
+
+window.openAdminLoginModal = function() {
+  const modal = document.getElementById('adminLoginModal');
+  if (modal) {
+    document.getElementById('adminPasswordInput').value = '';
+    modal.classList.add('active');
+    setTimeout(() => document.getElementById('adminPasswordInput').focus(), 150);
+  }
+};
+
+function updateRegistrationStatusUI() {
+  const isClosed = Boolean(store.settings && store.settings.registrationClosed);
+  const msg = (store.settings && store.settings.maintenanceMessage) ? store.settings.maintenanceMessage : '目前教務處正在進行全校公開授課資料彙整、排程調度與資料確認，暫停受理教師線上登記。待整理完成後將重新開放，敬請見諒！';
+
+  // 1. 前台頂部登記按鈕
+  const regBtn = document.getElementById('frontendRegisterBtn');
+  if (regBtn) {
+    if (isClosed) {
+      regBtn.className = 'btn btn-sketch-outline';
+      regBtn.style.background = '#fef2f2';
+      regBtn.style.borderColor = '#ef4444';
+      regBtn.style.color = '#dc2626';
+      regBtn.style.fontWeight = '700';
+      regBtn.innerHTML = '<i class="fa-solid fa-lock"></i> 暫停登記 (資料整理中)';
+      regBtn.title = '教務處資料整理中，暫停受理線上登記';
+    } else {
+      regBtn.className = 'btn btn-sketch-success';
+      regBtn.style.background = '';
+      regBtn.style.borderColor = '';
+      regBtn.style.color = '';
+      regBtn.style.fontWeight = '';
+      regBtn.innerHTML = '<i class="fa-solid fa-feather-pointed"></i> 教師線上登記公開課';
+      regBtn.title = '';
+    }
+  }
+
+  // 2. 前台公告 Banner
+  const banner = document.getElementById('bannerNotice');
+  if (banner) {
+    if (isClosed) {
+      banner.style.display = 'block';
+      banner.style.background = '#fef2f2';
+      banner.style.borderColor = '#f87171';
+      banner.style.color = '#991b1b';
+      const content = banner.querySelector('.notice-content');
+      if (content) {
+        content.innerHTML = `<strong><i class="fa-solid fa-triangle-exclamation"></i> 系統公告：【資料整理中・暫停受理登記】</strong> ${msg}`;
+      }
+    } else {
+      banner.style.background = '';
+      banner.style.borderColor = '';
+      banner.style.color = '';
+      const content = banner.querySelector('.notice-content');
+      if (content) {
+        content.innerHTML = '<strong>觀課溫馨提醒：</strong> 歡迎新北市中山國民小學同校及各校教師登記參與公開授課。授課完畢請於 2 星期內繳交教學觀察紀錄表。';
+      }
+    }
+  }
+
+  // 3. 前台頁面維護卡片
+  let maintCard = document.getElementById('frontendMaintenanceNotice');
+  const portal = document.getElementById('frontendPortal');
+  if (portal) {
+    if (isClosed) {
+      if (!maintCard) {
+        maintCard = document.createElement('div');
+        maintCard.id = 'frontendMaintenanceNotice';
+        maintCard.className = 'sketch-card';
+        maintCard.style.cssText = 'background: #fffbeb; border: 2.5px dashed #f59e0b; padding: 1.25rem 1.5rem; border-radius: 8px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; box-shadow: 2px 2px 0 var(--ink-border);';
+        maintCard.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 1.25rem; flex: 1; min-width: 260px;">
+            <div style="font-size: 2.2rem; color: #d97706; flex-shrink: 0;">
+              <i class="fa-solid fa-clipboard-check"></i>
+            </div>
+            <div>
+              <h3 style="color: #92400e; font-size: 1.15rem; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-lock"></i> 教務處資料整理中・暫停受理公開授課登記
+              </h3>
+              <p style="color: #78350f; font-size: 0.92rem; margin: 0; line-height: 1.6;">
+                ${msg}
+              </p>
+            </div>
+          </div>
+          <div style="flex-shrink: 0;">
+            <button type="button" class="btn btn-sketch-primary" onclick="openAdminLoginModal()" style="font-weight: 900; background: #0f172a; color: white;">
+              <i class="fa-solid fa-user-shield"></i> 教務處管理員登入整理
+            </button>
+          </div>
+        `;
+        portal.insertBefore(maintCard, portal.firstChild);
+      } else {
+        const p = maintCard.querySelector('p');
+        if (p) p.textContent = msg;
+      }
+    } else if (maintCard) {
+      maintCard.remove();
+    }
+  }
+
+  // 4. 後台設定表單連動
+  const regClosedRadio = document.getElementById('settingRegClosed');
+  const regOpenRadio = document.getElementById('settingRegOpen');
+  const maintMsgInput = document.getElementById('settingMaintenanceMessage');
+  if (regClosedRadio && regOpenRadio) {
+    if (isClosed) {
+      regClosedRadio.checked = true;
+    } else {
+      regOpenRadio.checked = true;
+    }
+  }
+  if (maintMsgInput) {
+    maintMsgInput.value = msg;
+  }
 }
 
 // 前後台 Portal 切換
@@ -571,9 +697,7 @@ function initPortalSwitcher() {
   const adminLoginModal = document.getElementById('adminLoginModal');
 
   switchToBackendBtn.addEventListener('click', () => {
-    document.getElementById('adminPasswordInput').value = '';
-    adminLoginModal.classList.add('active');
-    setTimeout(() => document.getElementById('adminPasswordInput').focus(), 150);
+    openAdminLoginModal();
   });
 
   document.getElementById('closeAdminLoginModalBtn').addEventListener('click', () => {
@@ -683,6 +807,7 @@ function initPortalSwitcher() {
 }
 
 function renderCurrentPortal() {
+  updateRegistrationStatusUI();
   if (store.currentPortal === 'frontend') {
     renderFrontendPortal();
   } else {
@@ -716,6 +841,11 @@ function initFrontendFilters() {
   });
 
   document.getElementById('frontendRegisterBtn').addEventListener('click', () => {
+    if (store.settings && store.settings.registrationClosed) {
+      const msg = store.settings.maintenanceMessage || '目前教務處正在進行全校公開授課資料彙整、排程調度與資料確認，暫停受理教師線上登記。待整理完成後將重新開放，敬請見諒！';
+      alert(`【系統資料整理中・暫停登記】\n\n${msg}`);
+      return;
+    }
     openFormModal();
   });
 }
@@ -961,15 +1091,22 @@ function initSettingsForm() {
       passwordChanged = true;
     }
 
+    // 讀取前台登記狀態與說明文字
+    const isClosed = document.getElementById('settingRegClosed') ? document.getElementById('settingRegClosed').checked : false;
+    const maintMsg = document.getElementById('settingMaintenanceMessage') ? document.getElementById('settingMaintenanceMessage').value.trim() : '';
+
     // 儲存設定
     const updatedSettings = {
       siteTitle: newTitle,
       siteSubtitle: newSubtitle,
-      adminPassword: passwordChanged ? newPassInput : store.settings.adminPassword
+      adminPassword: passwordChanged ? newPassInput : store.settings.adminPassword,
+      registrationClosed: isClosed,
+      maintenanceMessage: maintMsg || store.settings.maintenanceMessage
     };
 
     store.saveSettings(updatedSettings);
     applySystemSettings();
+    updateRegistrationStatusUI();
 
     // 清空密碼欄位
     document.getElementById('settingCurrentPassword').value = '';
@@ -1771,6 +1908,12 @@ function checkTeacherAlreadyRegistered(teacherName, teacherEmail, currentId = nu
 }
 
 function openFormModal(editId = null) {
+  if (store.settings && store.settings.registrationClosed && store.currentPortal !== 'backend') {
+    const msg = store.settings.maintenanceMessage || '目前教務處正在進行全校公開授課資料彙整、排程調度與資料確認，暫停受理教師線上登記。待整理完成後將重新開放，敬請見諒！';
+    alert(`【系統資料整理中・暫停登記】\n\n${msg}`);
+    return;
+  }
+
   const modal = document.getElementById('openClassModal');
   const title = document.getElementById('modalFormTitle');
   const form = document.getElementById('openClassForm');
@@ -1838,6 +1981,12 @@ function openFormModal(editId = null) {
 }
 
 function saveOpenClassFromForm(targetStatus) {
+  if (store.settings && store.settings.registrationClosed && store.currentPortal !== 'backend') {
+    const msg = store.settings.maintenanceMessage || '目前教務處正在進行全校公開授課資料彙整與整理，暫停受理線上登記。';
+    alert(`【系統資料整理中・暫停登記】\n\n${msg}`);
+    return;
+  }
+
   let id = document.getElementById('formEntryId').value;
   const teacherVal = document.getElementById('formTeacher').value;
   const emailVal = document.getElementById('formEmail').value;

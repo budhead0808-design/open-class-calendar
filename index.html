@@ -427,9 +427,33 @@
               </div>
             </div>
 
-            <!-- 區塊 2: 修改後台登入密碼 -->
+            <!-- 區塊 2: 前台教師線上登記開關 (資料整理中 / 維護模式) -->
+            <div class="settings-box sketch-card" style="margin-bottom: 1.5rem; padding: 1.25rem; border-color: #ef4444; background: #fffdfd;">
+              <h4 style="color: #dc2626; margin-bottom: 0.75rem;"><i class="fa-solid fa-lock"></i> 2. 前台教師登記開關 (資料整理中 / 維護模式)</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                教務處正在進行資料彙整、排程調度或需暫停全校老師填寫時，可直接切換此開關。開啟整理中模式時，前台將顯示停用公告並阻擋新填報，教務處後台管理者仍可自由維護、審核與整理。
+              </p>
+              
+              <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; background: white; padding: 12px; border-radius: 8px; border: 1.5px solid var(--ink-border);">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; color: #dc2626; font-size: 0.92rem;">
+                  <input type="radio" name="settingRegClosedRadio" value="closed" id="settingRegClosed" checked style="width: 18px; height: 18px; accent-color: #dc2626;">
+                  <span>🔴 關閉前台登記（教務處資料整理中，暫停教師線上登記與草稿提交）</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; color: #16a34a; font-size: 0.92rem;">
+                  <input type="radio" name="settingRegClosedRadio" value="open" id="settingRegOpen" style="width: 18px; height: 18px; accent-color: #16a34a;">
+                  <span>🟢 正常開放登記（允許全校教師線上填寫公開授課與送審）</span>
+                </label>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="settingMaintenanceMessage">暫停登記時前台顯示之說明文字</label>
+                <input type="text" id="settingMaintenanceMessage" class="form-control sketch-input" placeholder="例如：目前教務處正在進行全校公開授課資料彙整與整理，暫停教師線上登記...">
+              </div>
+            </div>
+
+            <!-- 區塊 3: 修改後台登入密碼 -->
             <div class="settings-box sketch-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
-              <h4 style="color: #b45309; margin-bottom: 1rem;"><i class="fa-solid fa-key"></i> 2. 教務處管理後台密碼修改</h4>
+              <h4 style="color: #b45309; margin-bottom: 1rem;"><i class="fa-solid fa-key"></i> 3. 教務處管理後台密碼修改</h4>
               
               <div class="form-group">
                 <label for="settingCurrentPassword">當前舊密碼 <span class="required-star">*</span></label>
@@ -449,9 +473,9 @@
               </div>
             </div>
 
-            <!-- 區塊 3: 系統資料備份與還原 (JSON 備份/還原) -->
+            <!-- 區塊 4: 系統資料備份與還原 (JSON 備份/還原) -->
             <div class="settings-box sketch-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
-              <h4 style="color: #059669; margin-bottom: 0.5rem;"><i class="fa-solid fa-box-archive"></i> 3. 系統資料全庫備份與還原 (跨電腦匯入匯出)</h4>
+              <h4 style="color: #059669; margin-bottom: 0.5rem;"><i class="fa-solid fa-box-archive"></i> 4. 系統資料全庫備份與還原 (跨電腦匯入匯出)</h4>
               <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
                 預設資料保存在目前瀏覽器中。您可以隨時匯出 JSON 備份檔，更換電腦或瀏覽器時只需匯入備份檔即可完全還原所有資料與學校標題！
               </p>
