@@ -2155,79 +2155,273 @@ function handleRegisterObserver(e, id) {
 }
 
 // ==========================================================================
-// 7. Export Engine
+// 7. Export Engine (自訂欄位勾選、時間先後排序、備課主持人自動填入授課教師)
 // ==========================================================================
-function initExportEngine() {
-  document.getElementById('exportBureauFormatBtn').addEventListener('click', () => {
-    const choice = confirm('請選擇匯出方式：\n【確定】：一鍵列印/儲存為教育局標準 A4 橫式表格 PDF\n【取消】：下載符合 11 大欄位之 CSV / Excel 表格');
-    if (choice) {
-      exportToPrintPDF();
-    } else {
-      exportToCSV();
+
+const EXPORT_AVAILABLE_FIELDS = [
+  { id: 'sessionId', label: '場次', default: true, printWidth: '40', align: 'center', getter: (item, idx) => item.sessionId || idx + 1 },
+  { id: 'date', label: '時間(日期)', default: true, printWidth: '85', getter: item => formatDateChinese(item.date) },
+  { id: 'period', label: '節次', default: true, printWidth: '60', align: 'center', getter: item => item.period || '-' },
+  { id: 'className', label: '班級', default: true, printWidth: '55', align: 'center', getter: item => item.className || '-' },
+  { id: 'teacher', label: '授課教師', default: true, printWidth: '80', getter: item => item.teacher || '-' },
+  { id: 'subject', label: '領域(科目)', default: true, printWidth: '80', getter: item => item.subject || '-' },
+  { id: 'unit', label: '單元名稱', default: true, getter: item => item.unit || '-' },
+  { 
+    id: 'prepHost', 
+    label: '備課主持人', 
+    default: true, 
+    printWidth: '85', 
+    getter: (item, idx, opts) => {
+      if (opts && opts.autoFillHost) {
+        return item.teacher || item.prepHost || '-';
+      }
+      return item.prepHost || '-';
+    } 
+  },
+  { id: 'coPrepGroup', label: '共同備課教師類群', default: true, getter: item => (item.coPrepGroup || '-').replace(/\n/g, ' ') },
+  { id: 'postPrepHost', label: '議課主持人', default: true, printWidth: '85', getter: item => item.postPrepHost || '-' },
+  { id: 'observationGroup', label: '觀課議課教師類群', default: true, getter: item => (item.observationGroup || '-').replace(/\n/g, ' ') },
+  { id: 'openType', label: '開放型態', default: true, printWidth: '60', align: 'center', getter: item => item.openType || '校內' },
+  { id: 'location', label: '地點/教室', default: false, printWidth: '85', getter: item => item.location || '-' },
+  { id: 'maxObservers', label: '名額上限', default: false, printWidth: '60', align: 'center', getter: item => item.maxObservers ? `${item.maxObservers} 人` : '-' },
+  { id: 'registeredObservers', label: '已報名觀課教師', default: false, getter: item => Array.isArray(item.registeredObservers) && item.registeredObservers.length > 0 ? item.registeredObservers.map(o => `${o.name || ''}(${o.school || ''})`).join('、') : '無' },
+  { id: 'status', label: '審核狀態', default: false, printWidth: '60', align: 'center', getter: item => item.status || '-' },
+  { id: 'lessonPlanUrl', label: '教案連結', default: false, getter: item => item.lessonPlanUrl || '-' }
+];
+
+const EXPORT_SETTINGS_STORAGE_KEY = 'OPEN_CLASS_EXPORT_COLUMNS_V1';
+
+function getStoredExportColumns() {
+  try {
+    const raw = localStorage.getItem(EXPORT_SETTINGS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
+  } catch (e) {}
+  return EXPORT_AVAILABLE_FIELDS.filter(f => f.default).map(f => f.id);
+}
+
+function saveStoredExportColumns(columnIds) {
+  try {
+    localStorage.setItem(EXPORT_SETTINGS_STORAGE_KEY, JSON.stringify(columnIds));
+  } catch (e) {}
+}
+
+window.openExportReportModal = function() {
+  renderExportFieldsCheckboxes();
+  const modal = document.getElementById('exportReportModal');
+  if (modal) modal.classList.add('active');
+};
+
+window.closeExportReportModal = function() {
+  const modal = document.getElementById('exportReportModal');
+  if (modal) modal.classList.remove('active');
+};
+
+function renderExportFieldsCheckboxes() {
+  const container = document.getElementById('exportFieldsContainer');
+  if (!container) return;
+
+  const currentSelected = getStoredExportColumns();
+  container.innerHTML = '';
+
+  EXPORT_AVAILABLE_FIELDS.forEach(field => {
+    const isChecked = currentSelected.includes(field.id);
+    const label = document.createElement('label');
+    label.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer; padding: 4px 6px; border-radius: 4px; user-select: none;';
+    label.innerHTML = `
+      <input type="checkbox" class="export-field-cb" value="${field.id}" ${isChecked ? 'checked' : ''} style="width: 17px; height: 17px; accent-color: var(--primary);">
+      <span>${field.label}</span>
+    `;
+    container.appendChild(label);
   });
 }
 
-function exportToPrintPDF() {
-  const data = store.getAll();
-  const printBody = document.getElementById('bureauPrintTableBody');
-  document.getElementById('printDateString').textContent = new Date().toISOString().split('T')[0];
+window.selectExportFields = function(mode) {
+  const cbs = document.querySelectorAll('.export-field-cb');
+  if (mode === 'all') {
+    cbs.forEach(cb => cb.checked = true);
+  } else if (mode === 'none') {
+    cbs.forEach(cb => cb.checked = false);
+  } else if (mode === 'default') {
+    const defaultIds = EXPORT_AVAILABLE_FIELDS.filter(f => f.default).map(f => f.id);
+    cbs.forEach(cb => cb.checked = defaultIds.includes(cb.value));
+  }
+};
 
-  printBody.innerHTML = '';
-  data.forEach((item, idx) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="text-align:center;">${item.sessionId || idx + 1}</td>
-      <td>${formatDateChinese(item.date)}</td>
-      <td>${item.period}</td>
-      <td style="text-align:center;">${item.className}</td>
-      <td><strong>${item.teacher}</strong></td>
-      <td>${item.subject}</td>
-      <td>${item.unit}</td>
-      <td>${item.prepHost || '-'}</td>
-      <td>${(item.coPrepGroup || '-').replace(/\n/g, ' ')}</td>
-      <td>${item.postPrepHost || '-'}</td>
-      <td>${(item.observationGroup || '-').replace(/\n/g, ' ')}</td>
-      <td style="text-align:center;">${item.openType}</td>
-    `;
-    printBody.appendChild(tr);
-  });
+function getComparableTimestamp(dateStr) {
+  if (!dateStr) return 0;
+  const s = String(dateStr).trim();
+  const matchTw = s.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  if (matchTw) {
+    return new Date(parseInt(matchTw[1], 10), parseInt(matchTw[2], 10) - 1, parseInt(matchTw[3], 10)).getTime();
+  }
+  const matchIso = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (matchIso) {
+    return new Date(parseInt(matchIso[1], 10), parseInt(matchIso[2], 10) - 1, parseInt(matchIso[3], 10)).getTime();
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+function getPeriodNumber(periodStr) {
+  if (!periodStr) return 99;
+  const match = String(periodStr).match(/\d+/);
+  return match ? parseInt(match[0], 10) : 99;
+}
+
+function getExportDataset(opts) {
+  const all = store.getAll();
+  const deletedIds = store.getDeletedIds ? store.getDeletedIds() : [];
+  let filtered = all.filter(item => !deletedIds.includes(item.id));
+
+  // 範圍篩選
+  if (opts.statusFilter === 'approved') {
+    filtered = filtered.filter(item => item.status === '已核准' || item.status === '已公告');
+  } else if (opts.statusFilter === 'published') {
+    filtered = filtered.filter(item => item.status === '已公告');
+  } else if (opts.statusFilter === 'pending') {
+    filtered = filtered.filter(item => item.status === '待審核');
+  }
+
+  // 複製避免改動原始陣列
+  let result = filtered.map(item => ({ ...item }));
+
+  // 時間先後順序排列
+  if (opts.sortByDate) {
+    result.sort((a, b) => {
+      const tA = getComparableTimestamp(a.date);
+      const tB = getComparableTimestamp(b.date);
+      if (tA !== tB) return tA - tB;
+      const pA = getPeriodNumber(a.period);
+      const pB = getPeriodNumber(b.period);
+      if (pA !== pB) return pA - pB;
+      return (a.teacher || '').localeCompare(b.teacher || '', 'zh-Hant');
+    });
+
+    // 依排序後順序重新賦予場次編號 (1..N)
+    result.forEach((item, idx) => {
+      item.sessionId = idx + 1;
+    });
+  }
+
+  return result;
+}
+
+window.executeExport = function(exportType) {
+  const checkedCbs = Array.from(document.querySelectorAll('.export-field-cb:checked'));
+  if (checkedCbs.length === 0) {
+    alert('請至少勾選一個欲匯出的欄位！');
+    return;
+  }
+
+  const selectedIds = checkedCbs.map(cb => cb.value);
+  saveStoredExportColumns(selectedIds);
+
+  const selectedFields = EXPORT_AVAILABLE_FIELDS.filter(f => selectedIds.includes(f.id));
+
+  const autoFillHost = document.getElementById('exportOptAutoFillHost') ? document.getElementById('exportOptAutoFillHost').checked : true;
+  const sortByDate = document.getElementById('exportOptSortByDate') ? document.getElementById('exportOptSortByDate').checked : true;
+  const statusFilter = document.getElementById('exportOptStatusFilter') ? document.getElementById('exportOptStatusFilter').value : 'approved';
+
+  const opts = { autoFillHost, sortByDate, statusFilter };
+  const dataset = getExportDataset(opts);
+
+  if (dataset.length === 0) {
+    alert('目前所選範圍內無任何公開授課資料可供匯出！');
+    return;
+  }
+
+  if (exportType === 'pdf') {
+    closeExportReportModal();
+    exportToPrintPDF(selectedFields, dataset, opts);
+  } else if (exportType === 'csv') {
+    exportToCSV(selectedFields, dataset, opts);
+    closeExportReportModal();
+  }
+};
+
+function initExportEngine() {
+  const btn = document.getElementById('exportBureauFormatBtn');
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openExportReportModal();
+    });
+  }
+}
+
+function exportToPrintPDF(selectedFields, data, opts) {
+  const printHead = document.getElementById('bureauPrintTableHead');
+  const printBody = document.getElementById('bureauPrintTableBody');
+  const printDateEl = document.getElementById('printDateString');
+  const printTitleEl = document.getElementById('printReportTitle');
+
+  if (printDateEl) {
+    printDateEl.textContent = new Date().toISOString().split('T')[0];
+  }
+  if (printTitleEl && store.settings && store.settings.siteTitle) {
+    printTitleEl.textContent = store.settings.siteTitle;
+  }
+
+  // 動態建立表頭
+  if (printHead) {
+    printHead.innerHTML = '';
+    const headerTr = document.createElement('tr');
+    selectedFields.forEach(field => {
+      const th = document.createElement('th');
+      if (field.printWidth) th.setAttribute('width', field.printWidth);
+      th.style.textAlign = field.align || 'center';
+      th.textContent = field.label;
+      headerTr.appendChild(th);
+    });
+    printHead.appendChild(headerTr);
+  }
+
+  // 動態建立資料列
+  if (printBody) {
+    printBody.innerHTML = '';
+    data.forEach((item, idx) => {
+      const tr = document.createElement('tr');
+      selectedFields.forEach(field => {
+        const td = document.createElement('td');
+        if (field.align) td.style.textAlign = field.align;
+        const val = field.getter(item, idx, opts);
+        if (field.id === 'teacher') {
+          td.innerHTML = `<strong>${val}</strong>`;
+        } else {
+          td.textContent = val;
+        }
+        tr.appendChild(td);
+      });
+      printBody.appendChild(tr);
+    });
+  }
 
   window.print();
 }
 
-function exportToCSV() {
-  const data = store.getAll();
-  const headers = [
-    '場次', '公開授課日期', '節次', '班級', '授課教師', 
-    '科目(領域)', '授課單元', '備課主持人', '共同備課教師類群', 
-    '議課主持人', '觀課議課教師類群', '開放型態', '狀態'
-  ];
+function exportToCSV(selectedFields, data, opts) {
+  const headers = selectedFields.map(f => f.label);
+  let csvContent = '\uFEFF' + headers.map(h => `"${h.replace(/"/g, '""')}"`).join(',') + '\n';
 
-  let csvContent = '\uFEFF' + headers.join(',') + '\n';
   data.forEach((item, idx) => {
-    const row = [
-      item.sessionId || idx + 1,
-      `"${formatDateChinese(item.date)}"`,
-      `"${item.period}"`,
-      `"${item.className}"`,
-      `"${item.teacher}"`,
-      `"${item.subject}"`,
-      `"${(item.unit || '').replace(/"/g, '""')}"`,
-      `"${(item.prepHost || '').replace(/"/g, '""')}"`,
-      `"${(item.coPrepGroup || '').replace(/\n/g, ' ').replace(/"/g, '""')}"`,
-      `"${(item.postPrepHost || '').replace(/"/g, '""')}"`,
-      `"${(item.observationGroup || '').replace(/\n/g, ' ').replace(/"/g, '""')}"`,
-      `"${item.openType}"`,
-      `"${item.status}"`
-    ];
+    const row = selectedFields.map(field => {
+      let val = field.getter(item, idx, opts);
+      if (val === null || val === undefined) val = '';
+      val = String(val).replace(/\r\n/g, ' ').replace(/\n/g, ' ');
+      return `"${val.replace(/"/g, '""')}"`;
+    });
     csvContent += row.join(',') + '\n';
   });
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `${store.settings.siteTitle || '公開授課行事曆'}_彙整表_${new Date().toISOString().split('T')[0]}.csv`;
+  const siteTitle = (store.settings && store.settings.siteTitle) ? store.settings.siteTitle : '公開授課行事曆';
+  const todayStr = new Date().toISOString().split('T')[0];
+  link.download = `${siteTitle}_公開授課報表_${todayStr}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
